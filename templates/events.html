@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}Event Logs{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+        <li class="breadcrumb-item active">Event Logs</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h4 class="page-title">Event Logs</h4>
+        <p class="page-subtitle">Monitor all incoming webhook events and their execution results</p>
+    </div>
+    <button class="btn btn-outline-secondary" onclick="loadEvents()">
+        <i class="bi bi-arrow-clockwise"></i> Refresh
+    </button>
+</div>
+
+<!-- Filters -->
+<div class="filter-bar mb-4">
+    <div class="filter-tabs">
+        <button class="filter-tab active" onclick="filterEvents('all', this)">All</button>
+        <button class="filter-tab" onclick="filterEvents('success', this)">Success</button>
+        <button class="filter-tab" onclick="filterEvents('failed', this)">Failed</button>
+        <button class="filter-tab" onclick="filterEvents('skipped', this)">Skipped</button>
+    </div>
+</div>
+
+<div class="content-card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Status</th>
+                    <th>Source</th>
+                    <th>Event Type</th>
+                    <th>Workflow</th>
+                    <th>Duration</th>
+                    <th>Timestamp</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="eventsTable">
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:0.5rem"></i>
+                        No events recorded yet
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Event Detail Modal -->
+<div class="modal fade" id="eventDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title">Event Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label text-muted small">Status</label>
+                        <div id="detailStatus"></div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label text-muted small">Source</label>
+                        <div id="detailSource"></div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label text-muted small">Duration</label>
+                        <div id="detailDuration"></div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-muted small">Payload</label>
+                    <pre class="bg-dark text-light p-3 rounded small" id="detailPayload"></pre>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-muted small">Response</label>
+                    <pre class="bg-dark text-light p-3 rounded small" id="detailResponse"></pre>
+                </div>
+                <div id="detailError" style="display:none">
+                    <label class="form-label text-muted small">Error</label>
+                    <div class="alert alert-danger small" id="detailErrorMsg"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let allEvents = [];
+let workflowMap = {};
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadEvents();
+});
+
+async function loadEvents() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const workflowId = urlParams.get('workflow_id');
+    const url = workflowId ? `/api/events?workflow_id=${workflowId}&limit=100` : '/api/events?limit=100';
+
+    allEvents = await api.get(url);
+
+    // Build workflow map
+    const workflows = await api.get('/api/events?limit=0');
+    // We'll just show IDs for now since we can't easily map
+    renderEvents(allEvents);
+}
+
+function filterEvents(status, btn) {
+    document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    if (status === 'all') renderEvents(allEvents);
+    else renderEvents(allEvents.filter(e => e.status === status));
+}
+
+function renderEvents(events) {
+    const tbody = document.getElementById('eventsTable');
+    if (events.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">
+            <i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:0.5rem"></i>No events found</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = events.map((e, i) => `
+        <tr>
+            <td><span class="status-badge ${e.status}">${e.status}</span></td>
+            <td><span class="badge bg-secondary-subtle text-secondary">${escapeHtml(e.source_app || '-')}</span></td>
+            <td><code>${escapeHtml(e.event_type || '-')}</code></td>
+            <td class="text-truncate" style="max-width:150px">${e.workflow_id ? e.workflow_id.substring(0, 12) + '...' : '-'}</td>
+            <td>${e.processing_time_ms || 0}ms</td>
+            <td>${timeAgo(e.timestamp)}</td>
+            <td>
+                <button class="btn btn-sm btn-icon" onclick='showEventDetail(${i})'>
+                    <i class="bi bi-eye"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function showEventDetail(index) {
+    const e = allEvents[index];
+    document.getElementById('detailStatus').innerHTML = `<span class="status-badge ${e.status}">${e.status}</span>`;
+    document.getElementById('detailSource').textContent = e.source_app || '-';
+    document.getElementById('detailDuration').textContent = `${e.processing_time_ms || 0}ms`;
+    document.getElementById('detailPayload').textContent = JSON.stringify(e.payload || {}, null, 2);
+    document.getElementById('detailResponse').textContent = JSON.stringify(e.response || {}, null, 2);
+
+    const errorDiv = document.getElementById('detailError');
+    if (e.error) {
+        errorDiv.style.display = '';
+        document.getElementById('detailErrorMsg').textContent = e.error;
+    } else {
+        errorDiv.style.display = 'none';
+    }
+
+    new bootstrap.Modal(document.getElementById('eventDetailModal')).show();
+}
+</script>
+{% endblock %}

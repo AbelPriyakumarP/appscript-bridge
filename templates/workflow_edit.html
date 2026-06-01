@@ -1,0 +1,461 @@
+{% extends "base.html" %}
+{% block title %}{{ workflow.name if workflow else 'Workflow' }} — AppScript Bridge{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item"><a href="/workspaces/{{ workspace.id }}">{{ workspace.name }}</a></li>
+    <li class="breadcrumb-item"><a href="/workspaces/{{ workspace.id }}/projects/{{ project.id }}">{{ project.name }}</a></li>
+    <li class="breadcrumb-item active">{{ workflow.name }}</li>
+</ol></nav>
+{% endblock %}
+
+{% block content %}
+{% if workflow %}
+<!-- Builder Header -->
+<div class="wf-header">
+    <div class="form-check form-switch form-switch-lg me-2">
+        <input class="form-check-input" type="checkbox" id="wfToggle"
+               {{ 'checked' if workflow.status == 'active' else '' }}
+               onchange="toggleStatus()">
+    </div>
+    <div class="wf-header-info">
+        <input type="text" class="wf-name-input" id="editName" value="{{ workflow.name }}">
+        <input type="text" class="wf-desc-input" id="editDesc" value="{{ workflow.description or '' }}" placeholder="Add a description...">
+    </div>
+    <div class="wf-header-actions">
+        <span class="status-badge {{ workflow.status }}" id="statusBadge">{{ workflow.status }}</span>
+        <button class="btn btn-outline-secondary btn-sm" onclick="deleteWorkflow()"><i class="bi bi-trash"></i></button>
+        <button class="btn btn-primary btn-sm" onclick="saveAll()" id="saveBtn">
+            <i class="bi bi-check-lg me-1"></i>Save
+        </button>
+    </div>
+</div>
+
+<div class="wf-builder">
+    <!-- Left Column: Flow Builder -->
+    <div class="flow-column">
+        <!-- Trigger Node -->
+        <div class="node-pane trigger">
+            <div class="node-header">
+                <div class="node-icon trigger-icon"><i class="bi bi-broadcast"></i></div>
+                <div>
+                    <div class="node-title">Trigger</div>
+                    <div class="node-subtitle" id="triggerSummary">{{ workflow.trigger.source_app }} &middot; {{ workflow.trigger.event_type }}</div>
+                </div>
+            </div>
+            <div class="node-body">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label">Credential (Source App)</label>
+                        <div class="d-flex gap-2">
+                            <select class="form-select" id="editCredential" onchange="onCredentialChange()" style="flex:1">
+                                <option value="">Select...</option>
+                                {% for cred in credentials %}
+                                <option value="{{ cred.id }}" data-app="{{ cred.app_type }}"
+                                    {{ 'selected' if cred.id == workflow.trigger.credential_id else '' }}>
+                                    {{ cred.name }} ({{ cred.app_type }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <button class="btn btn-outline-primary btn-sm" onclick="toggleNewCredential()" title="Add new credential" style="white-space:nowrap">
+                                <i class="bi bi-plus-lg"></i> New
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Inline Credential Creator -->
+                    <div class="col-12" id="inlineCredPanel" style="display:none">
+                        <div class="inline-cred-panel">
+                            <div class="inline-cred-header">
+                                <h6><i class="bi bi-key me-1"></i>New Credential</h6>
+                                <button class="btn btn-sm btn-icon" onclick="toggleNewCredential()"><i class="bi bi-x-lg"></i></button>
+                            </div>
+                            <div class="inline-cred-body">
+                                <div class="mb-2">
+                                    <label class="form-label">Platform</label>
+                                    <div class="d-flex gap-2">
+                                        {% for key, schema in app_schemas.items() %}
+                                        <button class="btn btn-outline-secondary btn-sm cred-type-btn" data-type="{{ key }}" onclick="selectCredType('{{ key }}')">
+                                            <i class="bi {{ schema.icon }} me-1" style="color:{{ schema.color }}"></i>{{ schema.label }}
+                                        </button>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Name</label>
+                                    <input type="text" class="form-control form-control-sm" id="newCredName" placeholder="e.g., My ServiceNow">
+                                </div>
+                                <div id="newCredFields"></div>
+                                <div class="d-flex gap-2 mt-2">
+                                    <button class="btn btn-primary btn-sm" onclick="saveInlineCredential()"><i class="bi bi-check-lg me-1"></i>Save</button>
+                                    <button class="btn btn-secondary btn-sm" onclick="toggleNewCredential()">Cancel</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Event Type</label>
+                        <select class="form-select" id="editEventType"></select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Connector -->
+        <div class="flow-connector">
+            <div class="connector-line"></div>
+            <i class="bi bi-arrow-down-circle-fill" style="color:var(--border-color)"></i>
+            <div class="connector-line"></div>
+        </div>
+
+        <!-- Action Node -->
+        <div class="node-pane action">
+            <div class="node-header">
+                <div class="node-icon action-icon"><i class="bi bi-lightning-charge"></i></div>
+                <div>
+                    <div class="node-title">Action</div>
+                    <div class="node-subtitle" id="actionSummary">{{ workflow.action.type }} &middot; {{ workflow.action.function_name or workflow.action.web_app_url or 'Not configured' }}</div>
+                </div>
+                <div class="ms-auto">
+                    <div class="btn-group btn-group-sm">
+                        <input type="radio" class="btn-check" name="editActionType" id="editActionApi" value="apps_script_api"
+                               {{ 'checked' if workflow.action.type == 'apps_script_api' else '' }} onchange="toggleEditAction()">
+                        <label class="btn btn-outline-secondary btn-sm" for="editActionApi">API</label>
+                        <input type="radio" class="btn-check" name="editActionType" id="editActionWeb" value="web_app"
+                               {{ 'checked' if workflow.action.type == 'web_app' else '' }} onchange="toggleEditAction()">
+                        <label class="btn btn-outline-secondary btn-sm" for="editActionWeb">Web App</label>
+                    </div>
+                </div>
+            </div>
+            <div class="node-body">
+                <div id="editApiFields" style="{{ 'display:none' if workflow.action.type == 'web_app' else '' }}">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Apps Script Project</label>
+                            <select class="form-select" id="editScript" onchange="onScriptChange()">
+                                <option value="">Loading...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Function</label>
+                            <select class="form-select" id="editFunction">
+                                <option value="">Select script first...</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div id="editWebFields" style="{{ '' if workflow.action.type == 'web_app' else 'display:none' }}">
+                    <label class="form-label">Web App URL</label>
+                    <input type="text" class="form-control" id="editWebUrl" value="{{ workflow.action.web_app_url or '' }}"
+                           placeholder="https://script.google.com/macros/s/.../exec">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Test, Webhook, Stats, Logs -->
+    <div class="context-panel">
+        <!-- Webhook Info -->
+        <div class="content-card">
+            <div class="card-header-custom">
+                <h6><i class="bi bi-link-45deg me-1"></i>Webhook URL</h6>
+                <button class="btn btn-sm btn-icon" onclick="copyText('webhookUrl')" title="Copy"><i class="bi bi-clipboard"></i></button>
+            </div>
+            <div class="card-body-custom" style="padding:12px 16px">
+                <code id="webhookUrl" style="font-size:11px;word-break:break-all;background:none;padding:0">{{ base_url }}/webhook/{% if workflow.trigger.source_app == 'telegram' %}telegram/{{ workflow.trigger.credential_id }}{% elif workflow.trigger.source_app == 'servicenow' %}servicenow/{{ workflow.trigger.credential_id }}{% else %}trigger{% endif %}</code>
+                <div class="mt-1" style="font-size:11px;color:var(--text-muted)">
+                    {% if workflow.trigger.source_app == 'telegram' %}
+                    Telegram sends updates here automatically
+                    {% elif workflow.trigger.source_app == 'servicenow' %}
+                    Configure this in ServiceNow Business Rules
+                    {% else %}
+                    Headers: <code>X-API-Key</code>, <code>X-Event-Type</code>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Panel -->
+        <div class="test-panel">
+            <div class="test-panel-header">
+                <h6><i class="bi bi-play-circle me-1"></i>Test Event</h6>
+                <button class="btn btn-primary btn-sm" onclick="runTest()" id="testBtn">
+                    <i class="bi bi-play-fill me-1"></i>Send
+                </button>
+            </div>
+            <div class="test-panel-body">
+                <textarea class="form-control test-payload" id="testPayload" rows="4">{{ test_payload }}</textarea>
+                <div id="testResult" style="display:none">
+                    <div class="test-result" id="testResultBody"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="content-card">
+            <div class="card-header-custom"><h6><i class="bi bi-bar-chart me-1"></i>Stats</h6></div>
+            <div class="card-body-custom" style="padding:10px 16px">
+                <div class="stat-row"><span>Total Triggers</span><strong>{{ workflow.trigger_count or 0 }}</strong></div>
+                <div class="stat-row"><span>Last Triggered</span><strong>{{ workflow.last_triggered[:16] if workflow.last_triggered else 'Never' }}</strong></div>
+                <div class="stat-row"><span>Created</span><strong>{{ workflow.created_at[:10] }}</strong></div>
+            </div>
+        </div>
+
+        <!-- Recent Events -->
+        <div class="content-card">
+            <div class="card-header-custom">
+                <h6><i class="bi bi-activity me-1"></i>Recent Events</h6>
+                <a href="/events?workflow_id={{ workflow.id }}" class="btn btn-sm btn-outline-secondary" style="font-size:11px">View All</a>
+            </div>
+            <div id="recentEvents" class="card-body-custom" style="padding:10px 16px">
+                <p class="text-muted text-center py-2 small">Loading...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const WF = {{ workflow | tojson }};
+const WORKSPACE_ID = '{{ workspace.id }}';
+const SCHEMAS = {{ app_schemas | tojson }};
+let selectedCredType = 'servicenow';
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadScripts();
+    loadRecentEvents();
+    populateEventTypes();
+});
+
+function populateEventTypes() {
+    const sel = document.getElementById('editCredential');
+    const opt = sel.options[sel.selectedIndex];
+    const appType = opt?.dataset?.app || 'custom';
+    const schema = SCHEMAS[appType] || SCHEMAS['custom'];
+    const evSel = document.getElementById('editEventType');
+    evSel.innerHTML = schema.webhook_events.map(e =>
+        `<option value="${e}" ${e === WF.trigger.event_type ? 'selected' : ''}>${e}</option>`
+    ).join('');
+}
+
+function onCredentialChange() { populateEventTypes(); }
+
+async function loadScripts() {
+    const sel = document.getElementById('editScript');
+    try {
+        const result = await api.get('/api/scripts');
+        if (result.success) {
+            sel.innerHTML = '<option value="">Choose script...</option>' +
+                result.scripts.map(s =>
+                    `<option value="${s.scriptId}" ${s.scriptId === WF.action.script_id ? 'selected' : ''}>${escapeHtml(s.name)}</option>`
+                ).join('');
+            if (WF.action.script_id) onScriptChange();
+        } else {
+            sel.innerHTML = `<option value="${WF.action.script_id || ''}">${WF.action.script_name || WF.action.script_id || 'Error loading'}</option>`;
+        }
+    } catch {
+        sel.innerHTML = `<option value="${WF.action.script_id || ''}">Connect Google to load</option>`;
+    }
+}
+
+async function onScriptChange() {
+    const scriptId = document.getElementById('editScript').value;
+    const fnSel = document.getElementById('editFunction');
+    if (!scriptId) { fnSel.innerHTML = '<option value="">Select script first...</option>'; return; }
+    fnSel.innerHTML = '<option value="">Loading...</option>';
+    try {
+        const result = await api.get(`/api/scripts/${scriptId}/functions`);
+        if (result.success && result.functions.length > 0) {
+            fnSel.innerHTML = result.functions.map(f =>
+                `<option value="${f.name}" ${f.name === WF.action.function_name ? 'selected' : ''}>${f.name} (${f.file}.gs)</option>`
+            ).join('');
+        } else {
+            fnSel.innerHTML = '<option value="">No functions found</option>';
+        }
+    } catch {
+        fnSel.innerHTML = `<option value="${WF.action.function_name || ''}">Error loading</option>`;
+    }
+}
+
+function toggleEditAction() {
+    const isApi = document.getElementById('editActionApi').checked;
+    document.getElementById('editApiFields').style.display = isApi ? '' : 'none';
+    document.getElementById('editWebFields').style.display = isApi ? 'none' : '';
+}
+
+async function toggleStatus() {
+    await api.post(`/api/workflows/${WF.id}/toggle`);
+    location.reload();
+}
+
+async function saveAll() {
+    const credSel = document.getElementById('editCredential');
+    const credOpt = credSel.options[credSel.selectedIndex];
+    const scriptSel = document.getElementById('editScript');
+    const scriptOpt = scriptSel.options[scriptSel.selectedIndex];
+    const data = {
+        name: document.getElementById('editName').value,
+        description: document.getElementById('editDesc').value,
+        trigger: {
+            source_app: credOpt?.dataset?.app || 'custom',
+            credential_id: credSel.value,
+            event_type: document.getElementById('editEventType').value,
+        },
+        action: {
+            type: document.querySelector('input[name="editActionType"]:checked').value,
+            script_id: document.getElementById('editScript').value,
+            script_name: scriptOpt?.textContent || '',
+            function_name: document.getElementById('editFunction').value,
+            web_app_url: document.getElementById('editWebUrl')?.value || '',
+        },
+    };
+    try {
+        const btn = document.getElementById('saveBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+        await api.put(`/api/workflows/${WF.id}`, data);
+        showToast('Workflow saved');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Save';
+    } catch (e) {
+        showToast(e.message, 'error');
+        document.getElementById('saveBtn').disabled = false;
+        document.getElementById('saveBtn').innerHTML = '<i class="bi bi-check-lg me-1"></i>Save';
+    }
+}
+
+async function deleteWorkflow() {
+    confirmDelete(`Delete workflow "${WF.name}"?`, async () => {
+        await api.delete(`/api/workflows/${WF.id}`);
+        showToast('Deleted');
+        window.location = `/workspaces/${WF.workspace_id}/projects/${WF.project_id}`;
+    });
+}
+
+// ── Test ──
+
+async function runTest() {
+    const btn = document.getElementById('testBtn');
+    try {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Sending...';
+
+        const payload = JSON.parse(document.getElementById('testPayload').value);
+        const cred = await api.get(`/api/credentials/${WF.trigger.credential_id}`);
+
+        let resp, result;
+        const sourceApp = WF.trigger.source_app;
+
+        if (sourceApp === 'telegram') {
+            resp = await fetch(`/webhook/telegram/${WF.trigger.credential_id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+        } else if (sourceApp === 'servicenow') {
+            resp = await fetch(`/webhook/servicenow/${WF.trigger.credential_id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+        } else {
+            resp = await fetch('/webhook/trigger', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': cred.api_key,
+                    'X-Event-Type': WF.trigger.event_type
+                },
+                body: JSON.stringify(payload),
+            });
+        }
+
+        result = await resp.json();
+        document.getElementById('testResult').style.display = '';
+        document.getElementById('testResultBody').textContent = JSON.stringify(result, null, 2);
+        loadRecentEvents();
+    } catch (e) {
+        showToast('Invalid JSON or test error: ' + e.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-play-fill me-1"></i>Send';
+    }
+}
+
+function copyText(id) {
+    navigator.clipboard.writeText(document.getElementById(id).textContent);
+    showToast('Copied');
+}
+
+async function loadRecentEvents() {
+    const events = await api.get(`/api/events?workflow_id=${WF.id}&limit=5`);
+    const el = document.getElementById('recentEvents');
+    if (events.length === 0) {
+        el.innerHTML = '<p class="text-muted text-center py-2 small">No events yet. Use the test panel to send a test event.</p>';
+        return;
+    }
+    el.innerHTML = events.map(e => `
+        <div class="event-mini">
+            <span class="status-dot ${e.status}"></span>
+            <span class="event-mini-type">${escapeHtml(e.event_type || 'unknown')}</span>
+            <span class="event-mini-time">${timeAgo(e.timestamp)}</span>
+        </div>
+    `).join('');
+}
+
+// ── Inline Credential ──
+
+function toggleNewCredential() {
+    const panel = document.getElementById('inlineCredPanel');
+    panel.style.display = panel.style.display === 'none' ? '' : 'none';
+    if (panel.style.display !== 'none') selectCredType(selectedCredType);
+}
+
+function selectCredType(type) {
+    selectedCredType = type;
+    document.querySelectorAll('.cred-type-btn').forEach(btn => {
+        btn.classList.toggle('btn-primary', btn.dataset.type === type);
+        btn.classList.toggle('btn-outline-secondary', btn.dataset.type !== type);
+    });
+    const schema = SCHEMAS[type];
+    const container = document.getElementById('newCredFields');
+    container.innerHTML = schema.fields.map(f => `
+        <div class="mb-2">
+            <label class="form-label">${f.label}${f.required ? ' <span class="text-danger">*</span>' : ''}</label>
+            <input type="${f.type}" class="form-control form-control-sm new-cred-field"
+                   data-key="${f.key}" placeholder="${f.placeholder}">
+        </div>
+    `).join('');
+}
+
+async function saveInlineCredential() {
+    const config = {};
+    document.querySelectorAll('.new-cred-field').forEach(el => {
+        if (el.value) config[el.dataset.key] = el.value;
+    });
+    const name = document.getElementById('newCredName').value;
+    if (!name) { showToast('Name is required', 'error'); return; }
+
+    try {
+        const cred = await api.post('/api/credentials', {
+            name, workspace_id: WORKSPACE_ID,
+            app_type: selectedCredType, config,
+        });
+        showToast('Credential created');
+        toggleNewCredential();
+
+        const sel = document.getElementById('editCredential');
+        const opt = document.createElement('option');
+        opt.value = cred.id;
+        opt.dataset.app = cred.app_type;
+        opt.textContent = `${cred.name} (${cred.app_type})`;
+        sel.appendChild(opt);
+        sel.value = cred.id;
+        onCredentialChange();
+    } catch (e) { showToast(e.message, 'error'); }
+}
+</script>
+{% endblock %}

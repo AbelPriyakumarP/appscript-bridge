@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AppScript Bridge{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <div class="app-layout">
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="brand">
+                    <div class="brand-icon"><i class="bi bi-lightning-charge-fill"></i></div>
+                    <span class="brand-text">AppScript Bridge</span>
+                </div>
+            </div>
+            <div class="sidebar-nav">
+                <ul class="nav-list">
+                    <li><a href="/" class="nav-link {% if page == 'dashboard' %}active{% endif %}"><i class="bi bi-grid-1x2"></i><span>Dashboard</span></a></li>
+                    <li><a href="/workspaces" class="nav-link {% if page == 'workspaces' %}active{% endif %}"><i class="bi bi-collection"></i><span>Workspaces</span></a></li>
+                    <li><a href="/credentials" class="nav-link {% if page == 'credentials' %}active{% endif %}"><i class="bi bi-key"></i><span>Credentials</span></a></li>
+                    <li><a href="/events" class="nav-link {% if page == 'events' %}active{% endif %}"><i class="bi bi-activity"></i><span>Event Logs</span></a></li>
+                </ul>
+                <div class="nav-divider"></div>
+                <p class="nav-section-title">Settings</p>
+                <ul class="nav-list">
+                    <li><a href="/settings" class="nav-link {% if page == 'settings' %}active{% endif %}"><i class="bi bi-gear"></i><span>Settings</span></a></li>
+                </ul>
+            </div>
+            <div class="sidebar-footer">
+                {% if google_connected %}
+                <div class="user-card">
+                    {% if user_picture %}<img src="{{ user_picture }}" alt="" class="user-avatar">
+                    {% else %}<div class="user-avatar-placeholder"><i class="bi bi-person"></i></div>{% endif %}
+                    <div class="user-info">
+                        <span class="user-name">{{ user_name or 'Connected' }}</span>
+                        <span class="user-email">{{ user_email }}</span>
+                    </div>
+                </div>
+                {% else %}
+                <a href="/auth/login" class="btn btn-connect-google"><i class="bi bi-google"></i> Connect Google</a>
+                {% endif %}
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="top-bar-left">
+                    <button class="sidebar-toggle d-md-none" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+                    {% block breadcrumb %}{% endblock %}
+                </div>
+                <div class="top-bar-right">
+                    {% if google_connected %}
+                    <span class="connection-badge connected"><i class="bi bi-check-circle-fill"></i> Google Connected</span>
+                    {% else %}
+                    <a href="/auth/login" class="connection-badge disconnected"><i class="bi bi-exclamation-circle-fill"></i> Connect Google</a>
+                    {% endif %}
+                </div>
+            </header>
+            <div class="content-area">{% block content %}{% endblock %}</div>
+        </main>
+    </div>
+
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
+
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0"><h5 class="modal-title">Confirm Delete</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body"><p id="deleteMessage">Are you sure?</p></div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="deleteConfirmBtn">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

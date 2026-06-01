@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name if project else 'Project' }}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+    <li class="breadcrumb-item"><a href="/workspaces">Workspaces</a></li>
+    <li class="breadcrumb-item"><a href="/workspaces/{{ workspace.id }}">{{ workspace.name }}</a></li>
+    <li class="breadcrumb-item active">{{ project.name }}</li>
+</ol></nav>
+{% endblock %}
+
+{% block content %}
+{% if project %}
+<div class="page-header">
+    <div>
+        <h4 class="page-title">{{ project.name }}</h4>
+        <p class="page-subtitle">{{ project.description or 'No description' }}</p>
+    </div>
+    <a href="/workspaces/{{ workspace.id }}/projects/{{ project.id }}/workflows/new" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> New Workflow
+    </a>
+</div>
+
+<div class="filter-tabs mb-4">
+    <button class="filter-tab active" onclick="filterWorkflows('all', this)">All</button>
+    <button class="filter-tab" onclick="filterWorkflows('active', this)">Active</button>
+    <button class="filter-tab" onclick="filterWorkflows('inactive', this)">Inactive</button>
+</div>
+
+<div id="workflowsList">
+    <div class="text-center py-5" id="emptyState">
+        <div class="empty-state">
+            <i class="bi bi-lightning"></i>
+            <h5>No workflows yet</h5>
+            <p>Create your first workflow to connect external events to Apps Script</p>
+            <a href="/workspaces/{{ workspace.id }}/projects/{{ project.id }}/workflows/new" class="btn btn-primary">
+                <i class="bi bi-plus-lg"></i> Create Workflow
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const WORKSPACE_ID = '{{ workspace.id }}';
+const PROJECT_ID = '{{ project.id }}';
+let allWorkflows = [];
+
+document.addEventListener('DOMContentLoaded', loadWorkflows);
+
+async function loadWorkflows() {
+    allWorkflows = await api.get(`/api/projects/${PROJECT_ID}/workflows`);
+    renderWorkflows(allWorkflows);
+}
+
+function filterWorkflows(status, btn) {
+    document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    renderWorkflows(status === 'all' ? allWorkflows : allWorkflows.filter(w => w.status === status));
+}
+
+function renderWorkflows(workflows) {
+    const container = document.getElementById('workflowsList');
+    const empty = document.getElementById('emptyState');
+    container.querySelectorAll('.workflow-row').forEach(r => r.remove());
+
+    if (workflows.length === 0) { empty.style.display = ''; return; }
+    empty.style.display = 'none';
+
+    container.insertAdjacentHTML('beforeend', workflows.map(wf => `
+        <div class="workflow-row">
+            <div class="workflow-status-toggle">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" ${wf.status === 'active' ? 'checked' : ''}
+                           onchange="toggleWorkflow('${wf.id}')">
+                </div>
+            </div>
+            <div class="workflow-info" onclick="window.location='/workflows/${wf.id}/edit'" style="cursor:pointer">
+                <div class="workflow-name">${escapeHtml(wf.name)}</div>
+                <div class="workflow-meta-row">
+                    <span class="badge bg-secondary-subtle text-secondary">${escapeHtml(wf.trigger?.source_app || 'custom')}</span>
+                    <span class="text-muted"><i class="bi bi-arrow-right"></i></span>
+                    <span class="badge bg-primary-subtle text-primary">${wf.action?.type === 'web_app' ? 'Web App' : 'Apps Script API'}</span>
+                    ${wf.trigger?.event_type ? `<code class="ms-2">${escapeHtml(wf.trigger.event_type)}</code>` : ''}
+                </div>
+            </div>
+            <div class="workflow-stats">
+                <span><i class="bi bi-lightning"></i> ${wf.trigger_count || 0}</span>
+                ${wf.last_triggered ? `<span class="text-muted">${timeAgo(wf.last_triggered)}</span>` : ''}
+            </div>
+            <div class="workflow-actions">
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-icon" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical"></i></button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="/workflows/${wf.id}/edit"><i class="bi bi-pencil"></i> Edit</a></li>
+                        <li><a class="dropdown-item" href="/events?workflow_id=${wf.id}"><i class="bi bi-activity"></i> Logs</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger" href="#" onclick="deleteWorkflow('${wf.id}','${escapeHtml(wf.name)}')"><i class="bi bi-trash"></i> Delete</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    `).join(''));
+}
+
+async function toggleWorkflow(id) {
+    await api.post(`/api/workflows/${id}/toggle`);
+    loadWorkflows();
+}
+
+async function deleteWorkflow(id, name) {
+    confirmDelete(`Delete workflow "${name}"?`, async () => {
+        await api.delete(`/api/workflows/${id}`);
+        showToast('Deleted');
+        loadWorkflows();
+    });
+}
+</script>
+{% endblock %}

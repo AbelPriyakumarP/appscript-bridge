@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}Workspaces{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+        <li class="breadcrumb-item active">Workspaces</li>
+    </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h4 class="page-title">Workspaces</h4>
+        <p class="page-subtitle">Organize your integrations into separate workspaces</p>
+    </div>
+    <button class="btn btn-primary" onclick="showCreateWorkspace()">
+        <i class="bi bi-plus-lg"></i> New Workspace
+    </button>
+</div>
+
+<div class="row g-4" id="workspacesList">
+    <div class="col-12 text-center py-5" id="emptyState">
+        <div class="empty-state">
+            <i class="bi bi-collection"></i>
+            <h5>No workspaces yet</h5>
+            <p>Create your first workspace to start building integrations</p>
+            <button class="btn btn-primary" onclick="showCreateWorkspace()">
+                <i class="bi bi-plus-lg"></i> Create Workspace
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Create/Edit Workspace Modal -->
+<div class="modal fade" id="workspaceModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title" id="workspaceModalTitle">New Workspace</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="workspaceEditId">
+                <div class="mb-3">
+                    <label class="form-label">Workspace Name</label>
+                    <input type="text" class="form-control" id="workspaceName" placeholder="e.g., Production Integrations">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Description <span class="text-muted">(optional)</span></label>
+                    <textarea class="form-control" id="workspaceDesc" rows="3" placeholder="What is this workspace for?"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveWorkspace()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let workspaceModal;
+
+document.addEventListener('DOMContentLoaded', () => {
+    workspaceModal = new bootstrap.Modal(document.getElementById('workspaceModal'));
+    loadWorkspaces();
+});
+
+async function loadWorkspaces() {
+    const workspaces = await api.get('/api/workspaces');
+    const container = document.getElementById('workspacesList');
+    const empty = document.getElementById('emptyState');
+
+    if (workspaces.length === 0) {
+        empty.style.display = '';
+        return;
+    }
+    empty.style.display = 'none';
+
+    // Get project counts
+    let projectCounts = {};
+    let workflowCounts = {};
+    for (const ws of workspaces) {
+        const projects = await api.get(`/api/workspaces/${ws.id}/projects`);
+        projectCounts[ws.id] = projects.length;
+        const workflows = await api.get(`/api/workspaces/${ws.id}/workflows`);
+        workflowCounts[ws.id] = { total: workflows.length, active: workflows.filter(w => w.status === 'active').length };
+    }
+
+    container.innerHTML = workspaces.map(ws => `
+        <div class="col-md-6 col-lg-4">
+            <div class="workspace-card" onclick="window.location='/workspaces/${ws.id}'">
+                <div class="workspace-card-header">
+                    <div class="workspace-icon">
+                        <i class="bi bi-collection"></i>
+                    </div>
+                    <div class="workspace-actions" onclick="event.stopPropagation()">
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-icon" data-bs-toggle="dropdown">
+                                <i class="bi bi-three-dots-vertical"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="#" onclick="editWorkspace('${ws.id}')"><i class="bi bi-pencil"></i> Edit</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="#" onclick="deleteWorkspace('${ws.id}', '${escapeHtml(ws.name)}')"><i class="bi bi-trash"></i> Delete</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <h5 class="workspace-name">${escapeHtml(ws.name)}</h5>
+                <p class="workspace-desc">${escapeHtml(ws.description || 'No description')}</p>
+                <div class="workspace-meta">
+                    <span><i class="bi bi-folder"></i> ${projectCounts[ws.id] || 0} projects</span>
+                    <span><i class="bi bi-lightning"></i> ${workflowCounts[ws.id]?.active || 0}/${workflowCounts[ws.id]?.total || 0} workflows</span>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function showCreateWorkspace() {
+    document.getElementById('workspaceModalTitle').textContent = 'New Workspace';
+    document.getElementById('workspaceEditId').value = '';
+    document.getElementById('workspaceName').value = '';
+    document.getElementById('workspaceDesc').value = '';
+    workspaceModal.show();
+}
+
+async function editWorkspace(id) {
+    const ws = await api.get(`/api/workspaces/${id}`);
+    document.getElementById('workspaceModalTitle').textContent = 'Edit Workspace';
+    document.getElementById('workspaceEditId').value = id;
+    document.getElementById('workspaceName').value = ws.name;
+    document.getElementById('workspaceDesc').value = ws.description || '';
+    workspaceModal.show();
+}
+
+async function saveWorkspace() {
+    const id = document.getElementById('workspaceEditId').value;
+    const data = {
+        name: document.getElementById('workspaceName').value,
+        description: document.getElementById('workspaceDesc').value,
+    };
+    if (!data.name) { showToast('Name is required', 'error'); return; }
+
+    if (id) {
+        await api.put(`/api/workspaces/${id}`, data);
+        showToast('Workspace updated');
+    } else {
+        await api.post('/api/workspaces', data);
+        showToast('Workspace created');
+    }
+    workspaceModal.hide();
+    loadWorkspaces();
+}
+
+async function deleteWorkspace(id, name) {
+    confirmDelete(`Delete workspace "${name}" and all its projects and workflows?`, async () => {
+        await api.delete(`/api/workspaces/${id}`);
+        showToast('Workspace deleted');
+        loadWorkspaces();
+    });
+}
+</script>
+{% endblock %}

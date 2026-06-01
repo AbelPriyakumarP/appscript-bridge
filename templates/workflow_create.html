@@ -1,0 +1,363 @@
+{% extends "base.html" %}
+{% block title %}New Workflow — AppScript Bridge{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb mb-0">
+    <li class="breadcrumb-item"><a href="/workspaces/{{ workspace.id }}">{{ workspace.name }}</a></li>
+    <li class="breadcrumb-item"><a href="/workspaces/{{ workspace.id }}/projects/{{ project.id }}">{{ project.name }}</a></li>
+    <li class="breadcrumb-item active">New Workflow</li>
+</ol></nav>
+{% endblock %}
+
+{% block content %}
+<!-- Builder Header -->
+<div class="wf-header">
+    <div class="wf-header-info">
+        <input type="text" class="wf-name-input" id="wfName" placeholder="Untitled Workflow" autofocus>
+        <input type="text" class="wf-desc-input" id="wfDesc" placeholder="Add a description...">
+    </div>
+    <div class="wf-header-actions">
+        <a href="/workspaces/{{ workspace.id }}/projects/{{ project.id }}" class="btn btn-outline-secondary btn-sm">Cancel</a>
+        <button class="btn btn-primary btn-sm" onclick="createWorkflow()" id="createBtn">
+            <i class="bi bi-check-lg me-1"></i>Create Workflow
+        </button>
+    </div>
+</div>
+
+<div class="wf-builder">
+    <!-- Left Column: Flow Builder -->
+    <div class="flow-column">
+        <!-- Trigger Node -->
+        <div class="node-pane trigger">
+            <div class="node-header">
+                <div class="node-icon trigger-icon"><i class="bi bi-broadcast"></i></div>
+                <div>
+                    <div class="node-title">Trigger</div>
+                    <div class="node-subtitle">When this event happens...</div>
+                </div>
+            </div>
+            <div class="node-body">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label">Credential (Source App)</label>
+                        <div class="d-flex gap-2">
+                            <select class="form-select" id="wfCredential" onchange="onCredentialChange()" style="flex:1">
+                                <option value="">Select a credential...</option>
+                                {% for cred in credentials %}
+                                <option value="{{ cred.id }}" data-app="{{ cred.app_type }}">{{ cred.name }} ({{ cred.app_type }})</option>
+                                {% endfor %}
+                            </select>
+                            <button class="btn btn-outline-primary btn-sm" onclick="toggleNewCredential()" title="Add new credential" style="white-space:nowrap">
+                                <i class="bi bi-plus-lg"></i> New
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Inline Credential Creator -->
+                    <div class="col-12" id="inlineCredPanel" style="display:none">
+                        <div class="inline-cred-panel">
+                            <div class="inline-cred-header">
+                                <h6><i class="bi bi-key me-1"></i>New Credential</h6>
+                                <button class="btn btn-sm btn-icon" onclick="toggleNewCredential()"><i class="bi bi-x-lg"></i></button>
+                            </div>
+                            <div class="inline-cred-body">
+                                <div class="mb-2">
+                                    <label class="form-label">Platform</label>
+                                    <div class="d-flex gap-2">
+                                        {% for key, schema in app_schemas.items() %}
+                                        <button class="btn btn-outline-secondary btn-sm cred-type-btn" data-type="{{ key }}" onclick="selectCredType('{{ key }}')">
+                                            <i class="bi {{ schema.icon }} me-1" style="color:{{ schema.color }}"></i>{{ schema.label }}
+                                        </button>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Name</label>
+                                    <input type="text" class="form-control form-control-sm" id="newCredName" placeholder="e.g., My ServiceNow">
+                                </div>
+                                <div id="newCredFields"></div>
+                                <div class="d-flex gap-2 mt-2">
+                                    <button class="btn btn-primary btn-sm" onclick="saveInlineCredential()"><i class="bi bi-check-lg me-1"></i>Save</button>
+                                    <button class="btn btn-secondary btn-sm" onclick="toggleNewCredential()">Cancel</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Event Type</label>
+                        <select class="form-select" id="wfEventType">
+                            <option value="">Select credential first...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Connector -->
+        <div class="flow-connector">
+            <div class="connector-line"></div>
+            <i class="bi bi-arrow-down-circle-fill" style="color:var(--border-color)"></i>
+            <div class="connector-line"></div>
+        </div>
+
+        <!-- Action Node -->
+        <div class="node-pane action">
+            <div class="node-header">
+                <div class="node-icon action-icon"><i class="bi bi-lightning-charge"></i></div>
+                <div>
+                    <div class="node-title">Action</div>
+                    <div class="node-subtitle">Then execute this...</div>
+                </div>
+                <div class="ms-auto">
+                    <div class="btn-group btn-group-sm">
+                        <input type="radio" class="btn-check" name="actionType" id="actionApi" value="apps_script_api" checked onchange="toggleActionType()">
+                        <label class="btn btn-outline-secondary btn-sm" for="actionApi">API</label>
+                        <input type="radio" class="btn-check" name="actionType" id="actionWeb" value="web_app" onchange="toggleActionType()">
+                        <label class="btn btn-outline-secondary btn-sm" for="actionWeb">Web App</label>
+                    </div>
+                </div>
+            </div>
+            <div class="node-body">
+                <div id="apiFields">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Apps Script Project</label>
+                            <select class="form-select" id="wfScript" onchange="onScriptChange()">
+                                <option value="">Loading scripts...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Function</label>
+                            <select class="form-select" id="wfFunction">
+                                <option value="">Select a script first...</option>
+                            </select>
+                        </div>
+                    </div>
+                    {% if not google_connected %}
+                    <div class="alert alert-warning small mt-3 mb-0">
+                        <i class="bi bi-exclamation-triangle me-1"></i><a href="/auth/login">Connect your Google account</a> to auto-load scripts and functions.
+                    </div>
+                    {% endif %}
+                </div>
+                <div id="webAppFields" style="display:none">
+                    <label class="form-label">Web App URL</label>
+                    <input type="text" class="form-control" id="wfWebAppUrl" placeholder="https://script.google.com/macros/s/.../exec">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Tips & Info -->
+    <div class="context-panel">
+        <div class="content-card">
+            <div class="card-header-custom"><h6><i class="bi bi-info-circle me-1"></i>Quick Guide</h6></div>
+            <div class="card-body-custom">
+                <div class="setup-steps">
+                    <div class="setup-step">
+                        <span class="step-number">1</span>
+                        <div>
+                            <strong>Configure Trigger</strong>
+                            <p class="text-muted small mb-0">Select or create a credential for ServiceNow, Telegram, or custom apps. Choose which event to listen for.</p>
+                        </div>
+                    </div>
+                    <div class="setup-step">
+                        <span class="step-number">2</span>
+                        <div>
+                            <strong>Set Up Action</strong>
+                            <p class="text-muted small mb-0">Pick the Apps Script project and function to run when the event fires. Functions are auto-loaded from your Google account.</p>
+                        </div>
+                    </div>
+                    <div class="setup-step">
+                        <span class="step-number">3</span>
+                        <div>
+                            <strong>Activate & Test</strong>
+                            <p class="text-muted small mb-0">After creating, you'll be taken to the editor where you can test with sample payloads and activate the workflow.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-card">
+            <div class="card-header-custom"><h6><i class="bi bi-lightbulb me-1"></i>Supported Triggers</h6></div>
+            <div class="card-body-custom">
+                <div class="d-flex flex-column gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="platform-icon-sm" style="background:#81b5a120;color:#81b5a1"><i class="bi bi-gear-wide-connected"></i></div>
+                        <div>
+                            <div style="font-size:13px;font-weight:600">ServiceNow</div>
+                            <div style="font-size:11px;color:var(--text-secondary)">Incidents, Changes, Problems</div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="platform-icon-sm" style="background:#0088cc20;color:#0088cc"><i class="bi bi-telegram"></i></div>
+                        <div>
+                            <div style="font-size:13px;font-weight:600">Telegram</div>
+                            <div style="font-size:11px;color:var(--text-secondary)">Messages, Commands, Callbacks</div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="platform-icon-sm" style="background:#6366f120;color:#6366f1"><i class="bi bi-plug"></i></div>
+                        <div>
+                            <div style="font-size:13px;font-weight:600">Custom / Generic</div>
+                            <div style="font-size:11px;color:var(--text-secondary)">Any webhook-enabled app</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const WORKSPACE_ID = '{{ workspace.id }}';
+const PROJECT_ID = '{{ project.id }}';
+const SCHEMAS = {{ app_schemas | tojson }};
+let allScripts = [];
+let selectedCredType = 'servicenow';
+
+document.addEventListener('DOMContentLoaded', loadScripts);
+
+async function loadScripts() {
+    const sel = document.getElementById('wfScript');
+    try {
+        const result = await api.get('/api/scripts');
+        if (result.success) {
+            allScripts = result.scripts;
+            sel.innerHTML = '<option value="">Choose an Apps Script project...</option>' +
+                allScripts.map(s => `<option value="${s.scriptId}">${escapeHtml(s.name)}</option>`).join('');
+        } else {
+            sel.innerHTML = `<option value="">Error: ${escapeHtml(result.error)}</option>`;
+        }
+    } catch (e) {
+        sel.innerHTML = '<option value="">Connect Google to load scripts</option>';
+    }
+}
+
+function onCredentialChange() {
+    const sel = document.getElementById('wfCredential');
+    const opt = sel.options[sel.selectedIndex];
+    const appType = opt?.dataset?.app || 'custom';
+    const eventSel = document.getElementById('wfEventType');
+    const schema = SCHEMAS[appType] || SCHEMAS['custom'];
+    eventSel.innerHTML = schema.webhook_events.map(e => `<option value="${e}">${e}</option>`).join('');
+}
+
+async function onScriptChange() {
+    const scriptId = document.getElementById('wfScript').value;
+    const fnSel = document.getElementById('wfFunction');
+    if (!scriptId) { fnSel.innerHTML = '<option value="">Select a script first...</option>'; return; }
+    fnSel.innerHTML = '<option value="">Loading functions...</option>';
+    try {
+        const result = await api.get(`/api/scripts/${scriptId}/functions`);
+        if (result.success && result.functions.length > 0) {
+            fnSel.innerHTML = result.functions.map(f =>
+                `<option value="${f.name}">${f.name} (${f.file}.gs)</option>`
+            ).join('');
+        } else {
+            fnSel.innerHTML = '<option value="">No functions found</option>';
+        }
+    } catch (e) {
+        fnSel.innerHTML = '<option value="">Error loading functions</option>';
+    }
+}
+
+function toggleActionType() {
+    const isApi = document.getElementById('actionApi').checked;
+    document.getElementById('apiFields').style.display = isApi ? '' : 'none';
+    document.getElementById('webAppFields').style.display = isApi ? 'none' : '';
+}
+
+// ── Inline Credential ──
+
+function toggleNewCredential() {
+    const panel = document.getElementById('inlineCredPanel');
+    panel.style.display = panel.style.display === 'none' ? '' : 'none';
+    if (panel.style.display !== 'none') selectCredType(selectedCredType);
+}
+
+function selectCredType(type) {
+    selectedCredType = type;
+    document.querySelectorAll('.cred-type-btn').forEach(btn => {
+        btn.classList.toggle('btn-primary', btn.dataset.type === type);
+        btn.classList.toggle('btn-outline-secondary', btn.dataset.type !== type);
+    });
+    const schema = SCHEMAS[type];
+    const container = document.getElementById('newCredFields');
+    container.innerHTML = schema.fields.map(f => `
+        <div class="mb-2">
+            <label class="form-label">${f.label}${f.required ? ' <span class="text-danger">*</span>' : ''}</label>
+            <input type="${f.type}" class="form-control form-control-sm new-cred-field"
+                   data-key="${f.key}" placeholder="${f.placeholder}">
+        </div>
+    `).join('');
+}
+
+async function saveInlineCredential() {
+    const config = {};
+    document.querySelectorAll('.new-cred-field').forEach(el => {
+        if (el.value) config[el.dataset.key] = el.value;
+    });
+    const name = document.getElementById('newCredName').value;
+    if (!name) { showToast('Name is required', 'error'); return; }
+
+    try {
+        const cred = await api.post('/api/credentials', {
+            name, workspace_id: WORKSPACE_ID,
+            app_type: selectedCredType, config,
+        });
+        showToast('Credential created');
+        toggleNewCredential();
+
+        const sel = document.getElementById('wfCredential');
+        const opt = document.createElement('option');
+        opt.value = cred.id;
+        opt.dataset.app = cred.app_type;
+        opt.textContent = `${cred.name} (${cred.app_type})`;
+        sel.appendChild(opt);
+        sel.value = cred.id;
+        onCredentialChange();
+    } catch (e) { showToast(e.message, 'error'); }
+}
+
+// ── Create Workflow ──
+
+async function createWorkflow() {
+    const credSel = document.getElementById('wfCredential');
+    const credOpt = credSel.options[credSel.selectedIndex];
+    const scriptSel = document.getElementById('wfScript');
+    const scriptOpt = scriptSel.options[scriptSel.selectedIndex];
+
+    const data = {
+        name: document.getElementById('wfName').value || 'Untitled Workflow',
+        description: document.getElementById('wfDesc').value,
+        project_id: PROJECT_ID,
+        workspace_id: WORKSPACE_ID,
+        source_app: credOpt?.dataset?.app || 'custom',
+        credential_id: credSel.value,
+        event_type: document.getElementById('wfEventType').value,
+        action_type: document.querySelector('input[name="actionType"]:checked').value,
+        script_id: scriptSel.value,
+        script_name: scriptOpt?.textContent || '',
+        function_name: document.getElementById('wfFunction').value,
+        web_app_url: document.getElementById('wfWebAppUrl').value,
+    };
+
+    try {
+        const btn = document.getElementById('createBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Creating...';
+        const wf = await api.post('/api/workflows', data);
+        showToast('Workflow created');
+        window.location = `/workflows/${wf.id}/edit`;
+    } catch (e) {
+        showToast(e.message, 'error');
+        document.getElementById('createBtn').disabled = false;
+        document.getElementById('createBtn').innerHTML = '<i class="bi bi-check-lg me-1"></i>Create Workflow';
+    }
+}
+</script>
+{% endblock %}
