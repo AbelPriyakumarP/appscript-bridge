@@ -1,0 +1,694 @@
+{% extends "base.html" %}
+{% block title %}User Guide — AppScript Bridge{% endblock %}
+
+{% block breadcrumb %}
+<nav class="breadcrumb">
+    <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+    <li class="breadcrumb-item active">User Guide</li>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h4 class="page-title">User Guide</h4>
+        <p class="page-subtitle">Everything you need to connect ServiceNow and Telegram to Google Apps Script</p>
+    </div>
+    <div class="d-flex gap-2">
+        <input type="text" class="form-control" id="searchBox" placeholder="Search guide…"
+               style="width:220px" oninput="filterGuide(this.value)">
+    </div>
+</div>
+
+<!-- Tab Navigation -->
+<div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:24px" id="guideTabs">
+    <button class="guide-tab active" onclick="showSection('quickstart', this)">Quick Start</button>
+    <button class="guide-tab" onclick="showSection('servicenow', this)">ServiceNow</button>
+    <button class="guide-tab" onclick="showSection('telegram', this)">Telegram</button>
+    <button class="guide-tab" onclick="showSection('appscript', this)">Apps Script</button>
+    <button class="guide-tab" onclick="showSection('faq', this)">FAQ / Ask Us</button>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     QUICK START
+════════════════════════════════════════════════════ -->
+<div class="guide-section" id="sec-quickstart">
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="content-card">
+                <div class="card-header-custom">
+                    <h6><i class="bi bi-rocket-takeoff-fill me-2" style="color:var(--accent-light)"></i>Getting Started in 5 Steps</h6>
+                </div>
+                <div class="card-body-custom">
+                    <div class="guide-steps">
+                        <div class="guide-step">
+                            <div class="guide-step-num">1</div>
+                            <div class="guide-step-body">
+                                <div class="guide-step-title">Connect your Google Account</div>
+                                <p>Go to <a href="/settings">Settings</a> and click <strong>Connect Google Account</strong>. This grants access to your Apps Script projects via the Google Apps Script REST API.</p>
+                                <div class="guide-note"><i class="bi bi-info-circle me-1"></i>The Apps Script API must be enabled in your GCP project for script execution to work.</div>
+                            </div>
+                        </div>
+
+                        <div class="guide-step">
+                            <div class="guide-step-num">2</div>
+                            <div class="guide-step-body">
+                                <div class="guide-step-title">Add a Credential</div>
+                                <p>Go to <a href="/credentials">Credentials</a> and add one for your external platform — <strong>ServiceNow</strong>, <strong>Telegram</strong>, or a custom app. Each credential generates a unique webhook URL.</p>
+                            </div>
+                        </div>
+
+                        <div class="guide-step">
+                            <div class="guide-step-num">3</div>
+                            <div class="guide-step-body">
+                                <div class="guide-step-title">Create a Workspace and Project</div>
+                                <p>Workspaces are top-level containers (e.g. "Production"). Projects group related workflows (e.g. "ServiceNow Integrations"). Navigate to <a href="/workspaces">Workspaces</a> and create both.</p>
+                            </div>
+                        </div>
+
+                        <div class="guide-step">
+                            <div class="guide-step-num">4</div>
+                            <div class="guide-step-body">
+                                <div class="guide-step-title">Build a Workflow</div>
+                                <p>Open your project and click <strong>New Workflow</strong>. Set a <em>Trigger</em> (which credential + event type) and an <em>Action</em> (which Apps Script project + function to call). Functions are auto-loaded from your Google Drive.</p>
+                            </div>
+                        </div>
+
+                        <div class="guide-step">
+                            <div class="guide-step-num">5</div>
+                            <div class="guide-step-body">
+                                <div class="guide-step-title">Activate and Test</div>
+                                <p>Toggle the workflow Active, then use the <strong>Test Payload</strong> panel in the editor to fire a sample event. Results appear instantly — green means success, red shows the error.</p>
+                                <div class="guide-note"><i class="bi bi-lightbulb me-1"></i>Test payloads are pre-filled with realistic data for your trigger type.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="content-card mb-3">
+                <div class="card-header-custom"><h6><i class="bi bi-diagram-3-fill me-2" style="color:var(--accent-light)"></i>How It Works</h6></div>
+                <div class="card-body-custom">
+                    <div class="guide-flow">
+                        <div class="guide-flow-step">
+                            <div class="guide-flow-icon" style="background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);color:#f59e0b">
+                                <i class="bi bi-broadcast"></i>
+                            </div>
+                            <div>
+                                <div style="font-size:12px;font-weight:600;color:var(--text-1)">External Event</div>
+                                <div style="font-size:11px;color:var(--text-3)">ServiceNow incident, Telegram message, custom webhook</div>
+                            </div>
+                        </div>
+                        <div class="guide-flow-arrow"><i class="bi bi-arrow-down"></i></div>
+                        <div class="guide-flow-step">
+                            <div class="guide-flow-icon" style="background:rgba(99,102,241,.1);border-color:rgba(99,102,241,.3);color:#818cf8">
+                                <i class="bi bi-lightning-charge-fill"></i>
+                            </div>
+                            <div>
+                                <div style="font-size:12px;font-weight:600;color:var(--text-1)">AppScript Bridge</div>
+                                <div style="font-size:11px;color:var(--text-3)">Receives event, matches to active workflow</div>
+                            </div>
+                        </div>
+                        <div class="guide-flow-arrow"><i class="bi bi-arrow-down"></i></div>
+                        <div class="guide-flow-step">
+                            <div class="guide-flow-icon" style="background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.3);color:#22c55e">
+                                <i class="bi bi-google"></i>
+                            </div>
+                            <div>
+                                <div style="font-size:12px;font-weight:600;color:var(--text-1)">Apps Script Function</div>
+                                <div style="font-size:11px;color:var(--text-3)">Your function runs with the event payload as argument</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-card">
+                <div class="card-header-custom"><h6><i class="bi bi-bookmark-fill me-2" style="color:var(--warning)"></i>Key Terms</h6></div>
+                <div class="card-body-custom" style="padding:10px 16px">
+                    <div class="stat-row"><span>Trigger</span><span style="color:var(--text-2);font-size:11px">An incoming webhook event from an external app</span></div>
+                    <div class="stat-row"><span>Action</span><span style="color:var(--text-2);font-size:11px">The Apps Script function called when triggered</span></div>
+                    <div class="stat-row"><span>Credential</span><span style="color:var(--text-2);font-size:11px">Auth details + unique webhook URL per platform</span></div>
+                    <div class="stat-row"><span>Workspace</span><span style="color:var(--text-2);font-size:11px">Top-level group (team / environment)</span></div>
+                    <div class="stat-row"><span>Project</span><span style="color:var(--text-2);font-size:11px">Collection of related workflows</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     SERVICENOW
+════════════════════════════════════════════════════ -->
+<div class="guide-section" id="sec-servicenow" style="display:none">
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="content-card mb-4">
+                <div class="card-header-custom">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="platform-icon-sm" style="background:#81b5a118;color:#81b5a1"><i class="bi bi-gear-wide-connected"></i></div>
+                        <h6 style="margin:0">Setting Up ServiceNow Integration</h6>
+                    </div>
+                </div>
+                <div class="card-body-custom">
+                    <div class="guide-steps">
+                        <div class="guide-step">
+                            <div class="guide-step-num">1</div>
+                            <div class="guide-step-body">
+                                <div class="guide-step-title">Create OAuth Application in ServiceNow</div>
+                                <p>In ServiceNow, navigate to <strong>System OAuth → Application Registry</strong>. Click New → Create an OAuth API endpoint for external clients. Copy the <strong>Client ID</strong> and <strong>Client Secret</strong>.</p>
+                            </div>
+                        </div>
+                        <div class="guide-step">
+                            <div class="guide-step-num">2</div>
+                            <div class="guide-step-body">
+                                <div class="guide-step-title">Add ServiceNow Credential</div>
+                                <p>In AppScript Bridge, go to <a href="/credentials/new/servicenow">Credentials → New ServiceNow</a>. Fill in your instance URL, Client ID, and Client Secret. After saving, copy the <strong>Webhook URL</strong> from the manage page.</p>
+                            </div>
+                        </div>
+                        <div class="guide-step">
+                            <div class="guide-step-num">3</div>
+                            <div class="guide-step-body">
+                                <div class="guide-step-title">Create a Business Rule in ServiceNow</div>
+                                <p>Navigate to <strong>System Definition → Business Rules</strong>. Create a new rule on your target table (e.g., incident). Under Advanced tab, add this script:</p>
+<pre>// Business Rule: Send to AppScript Bridge
+(function executeRule(current, previous) {
+    var req = new sn_ws.RESTMessageV2();
+    req.setEndpoint('YOUR_WEBHOOK_URL_HERE');
+    req.setHttpMethod('POST');
+    req.setRequestHeader('Content-Type', 'application/json');
+
+    var body = {
+        event_type:        'incident.created',
+        number:            current.number.toString(),
+        short_description: current.short_description.toString(),
+        priority:          current.priority.toString(),
+        state:             current.state.toString(),
+        caller_id:         current.caller_id.getDisplayValue(),
+        sys_id:            current.sys_id.toString()
+    };
+
+    req.setRequestBody(JSON.stringify(body));
+    var response = req.execute();
+})(current, previous);</pre>
+                                <div class="guide-note"><i class="bi bi-info-circle me-1"></i>Replace <code>YOUR_WEBHOOK_URL_HERE</code> with the URL from your credential manage page.</div>
+                            </div>
+                        </div>
+                        <div class="guide-step">
+                            <div class="guide-step-num">4</div>
+                            <div class="guide-step-body">
+                                <div class="guide-step-title">Create a Workflow in AppScript Bridge</div>
+                                <p>Create a workflow using your ServiceNow credential. Set the event type to match what you send in the Business Rule (e.g., <code>incident.created</code>). Select your Apps Script function.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-card">
+                <div class="card-header-custom"><h6><i class="bi bi-list-check me-2" style="color:var(--success)"></i>Supported Event Types</h6></div>
+                <div class="card-body-custom" style="padding:10px 16px">
+                    <div class="stat-row"><span><code>incident.created</code></span><span style="font-size:11px;color:var(--text-3)">New incident created</span></div>
+                    <div class="stat-row"><span><code>incident.updated</code></span><span style="font-size:11px;color:var(--text-3)">Incident fields changed</span></div>
+                    <div class="stat-row"><span><code>incident.resolved</code></span><span style="font-size:11px;color:var(--text-3)">Incident moved to resolved</span></div>
+                    <div class="stat-row"><span><code>change_request.created</code></span><span style="font-size:11px;color:var(--text-3)">New change request</span></div>
+                    <div class="stat-row"><span><code>change_request.approved</code></span><span style="font-size:11px;color:var(--text-3)">Change request approved</span></div>
+                    <div class="stat-row"><span><code>problem.created</code></span><span style="font-size:11px;color:var(--text-3)">New problem record</span></div>
+                    <div class="stat-row"><span><code>custom</code></span><span style="font-size:11px;color:var(--text-3)">Any other event type you define</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="content-card mb-3">
+                <div class="card-header-custom"><h6><i class="bi bi-shield-check me-2" style="color:var(--success)"></i>Security Notes</h6></div>
+                <div class="card-body-custom">
+                    <div class="setup-steps">
+                        <div class="setup-step"><span class="step-number">!</span>
+                            <div><strong>Webhook URL contains the credential ID</strong><p>Keep your webhook URL private — it's the only authentication for ServiceNow events.</p></div>
+                        </div>
+                        <div class="setup-step"><span class="step-number">!</span>
+                            <div><strong>Deactivate to stop all events</strong><p>If compromised, deactivate the credential in AppScript Bridge — the webhook will immediately return 404.</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-card">
+                <div class="card-header-custom"><h6><i class="bi bi-bug-fill me-2" style="color:var(--danger)"></i>Troubleshooting</h6></div>
+                <div class="card-body-custom">
+                    <div class="setup-steps">
+                        <div class="setup-step"><span class="step-number">?</span>
+                            <div><strong>Events not arriving</strong><p>Check the Business Rule is active, the endpoint URL is correct, and the ServiceNow instance can reach your server. Use ngrok for local dev.</p></div>
+                        </div>
+                        <div class="setup-step"><span class="step-number">?</span>
+                            <div><strong>Workflow shows "skipped"</strong><p>The <code>event_type</code> in the payload doesn't match the workflow's configured event type. Check Event Logs to see the actual value received.</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     TELEGRAM
+════════════════════════════════════════════════════ -->
+<div class="guide-section" id="sec-telegram" style="display:none">
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="content-card">
+                <div class="card-header-custom">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="platform-icon-sm" style="background:#0088cc18;color:#0088cc"><i class="bi bi-telegram"></i></div>
+                        <h6 style="margin:0">Setting Up Telegram Bot Integration</h6>
+                    </div>
+                </div>
+                <div class="card-body-custom">
+                    <div class="guide-steps">
+                        <div class="guide-step">
+                            <div class="guide-step-num">1</div>
+                            <div class="guide-step-body">
+                                <div class="guide-step-title">Create a Telegram Bot</div>
+                                <p>Open Telegram and search for <strong>@BotFather</strong>. Send <code>/newbot</code>, follow the prompts to name your bot, and copy the <strong>Bot Token</strong> (format: <code>123456789:ABC-DEF1234…</code>).</p>
+                            </div>
+                        </div>
+                        <div class="guide-step">
+                            <div class="guide-step-num">2</div>
+                            <div class="guide-step-body">
+                                <div class="guide-step-title">Add Telegram Credential</div>
+                                <p>Go to <a href="/credentials/new/telegram">Credentials → New Telegram</a>. Paste your Bot Token and save.</p>
+                            </div>
+                        </div>
+                        <div class="guide-step">
+                            <div class="guide-step-num">3</div>
+                            <div class="guide-step-body">
+                                <div class="guide-step-title">Expose Your Server Publicly</div>
+                                <p>Telegram requires a public HTTPS URL to deliver updates. For local development, use <strong>ngrok</strong>:</p>
+<pre>ngrok http 5000</pre>
+                                <p>Copy the <code>https://xxxx.ngrok.io</code> URL and update your <code>.env</code> file:</p>
+<pre>BASE_URL=https://xxxx.ngrok.io</pre>
+                                <p>Then restart your Flask server.</p>
+                                <div class="guide-note"><i class="bi bi-info-circle me-1"></i>For production, deploy behind a proper HTTPS domain and set BASE_URL accordingly.</div>
+                            </div>
+                        </div>
+                        <div class="guide-step">
+                            <div class="guide-step-num">4</div>
+                            <div class="guide-step-body">
+                                <div class="guide-step-title">Register the Webhook</div>
+                                <p>Open your Telegram credential's manage page and click <strong>Register Webhook with Telegram</strong>. This calls the Telegram API to point your bot at AppScript Bridge's webhook URL.</p>
+                                <p>Click <strong>Check Status</strong> to verify registration succeeded.</p>
+                            </div>
+                        </div>
+                        <div class="guide-step">
+                            <div class="guide-step-num">5</div>
+                            <div class="guide-step-body">
+                                <div class="guide-step-title">Create a Workflow</div>
+                                <p>Create a workflow using your Telegram credential. Choose the event type: <code>message</code> for regular messages, <code>command</code> for bot commands (e.g. <code>/start</code>), or <code>callback_query</code> for inline button presses.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="content-card mb-3">
+                <div class="card-header-custom"><h6><i class="bi bi-list-check me-2" style="color:var(--success)"></i>Supported Event Types</h6></div>
+                <div class="card-body-custom" style="padding:10px 16px">
+                    <div class="stat-row"><span><code>message</code></span><span style="font-size:11px;color:var(--text-3)">Any regular text message</span></div>
+                    <div class="stat-row"><span><code>command</code></span><span style="font-size:11px;color:var(--text-3)">Bot command (starts with /)</span></div>
+                    <div class="stat-row"><span><code>callback_query</code></span><span style="font-size:11px;color:var(--text-3)">Inline keyboard button press</span></div>
+                    <div class="stat-row"><span><code>edited_message</code></span><span style="font-size:11px;color:var(--text-3)">User edited a message</span></div>
+                    <div class="stat-row"><span><code>inline_query</code></span><span style="font-size:11px;color:var(--text-3)">Inline mode query</span></div>
+                </div>
+            </div>
+
+            <div class="content-card">
+                <div class="card-header-custom"><h6><i class="bi bi-bug-fill me-2" style="color:var(--danger)"></i>Troubleshooting</h6></div>
+                <div class="card-body-custom">
+                    <div class="setup-steps">
+                        <div class="setup-step"><span class="step-number">?</span>
+                            <div><strong>Webhook registration fails</strong><p>Your BASE_URL must be an HTTPS URL. Run ngrok and update your .env, then restart before registering.</p></div>
+                        </div>
+                        <div class="setup-step"><span class="step-number">?</span>
+                            <div><strong>Messages not arriving</strong><p>Check the webhook is registered (Check Status shows the URL). If BASE_URL changed (e.g. new ngrok tunnel), re-register the webhook.</p></div>
+                        </div>
+                        <div class="setup-step"><span class="step-number">?</span>
+                            <div><strong>command events not firing</strong><p>Make sure your workflow event type is set to <code>command</code>, not <code>message</code> — AppScript Bridge automatically classifies messages starting with / as commands.</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     APPS SCRIPT
+════════════════════════════════════════════════════ -->
+<div class="guide-section" id="sec-appscript" style="display:none">
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="content-card mb-4">
+                <div class="card-header-custom">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="platform-icon-sm" style="background:rgba(34,197,94,.1);color:#22c55e"><i class="bi bi-google"></i></div>
+                        <h6 style="margin:0">Writing Functions for AppScript Bridge</h6>
+                    </div>
+                </div>
+                <div class="card-body-custom">
+                    <p style="font-size:12px;color:var(--text-2);margin-bottom:14px">AppScript Bridge calls your function using the Apps Script REST API, passing the full event payload as the first parameter.</p>
+
+                    <div class="guide-step-title mb-2">Basic Function Template</div>
+<pre>/**
+ * Called by AppScript Bridge when a ServiceNow incident is created.
+ * @param {Object} payload  The full event payload from ServiceNow.
+ */
+function handleIncidentCreated(payload) {
+  Logger.log('Received event: ' + payload.event_type);
+  Logger.log('Incident number: ' + payload.number);
+
+  // Example: write to Google Sheets
+  var sheet = SpreadsheetApp.openById('SHEET_ID')
+                             .getActiveSheet();
+  sheet.appendRow([
+    new Date(),
+    payload.number,
+    payload.short_description,
+    payload.priority
+  ]);
+}</pre>
+
+                    <div class="guide-step-title mt-4 mb-2">Telegram Message Handler</div>
+<pre>/**
+ * Called when a Telegram message is received.
+ * @param {Object} update  The full Telegram Update object.
+ */
+function handleTelegramMessage(update) {
+  var msg  = update.message;
+  var text = msg.text;
+  var from = msg.from.first_name;
+
+  Logger.log(from + ' said: ' + text);
+
+  // Example: send a reply using UrlFetchApp
+  // (Telegram bot token needed here)
+  var token = PropertiesService.getScriptProperties()
+                                .getProperty('TG_TOKEN');
+  UrlFetchApp.fetch(
+    'https://api.telegram.org/bot' + token + '/sendMessage',
+    {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify({
+        chat_id: msg.chat.id,
+        text: 'Hello, ' + from + '! You said: ' + text
+      })
+    }
+  );
+}</pre>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="content-card mb-3">
+                <div class="card-header-custom"><h6><i class="bi bi-exclamation-triangle-fill me-2" style="color:var(--warning)"></i>Requirements</h6></div>
+                <div class="card-body-custom">
+                    <div class="setup-steps">
+                        <div class="setup-step"><span class="step-number">!</span>
+                            <div><strong>Apps Script API enabled</strong><p>In Google Cloud Console → Library, enable "Apps Script API" for your GCP project.</p></div>
+                        </div>
+                        <div class="setup-step"><span class="step-number">!</span>
+                            <div><strong>Script linked to GCP project</strong><p>In the Apps Script editor, go to Project Settings → Google Cloud Platform project → link to the same GCP project as your OAuth credentials.</p></div>
+                        </div>
+                        <div class="setup-step"><span class="step-number">!</span>
+                            <div><strong>Function must be top-level</strong><p>The function must be a top-level <code>function name()</code> declaration in a <code>.gs</code> file — not nested inside another function or class.</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-card">
+                <div class="card-header-custom"><h6><i class="bi bi-info-circle me-2" style="color:var(--info)"></i>Auto-loading</h6></div>
+                <div class="card-body-custom">
+                    <div class="setup-steps">
+                        <div class="setup-step"><span class="step-number">1</span>
+                            <div><strong>Connect Google first</strong><p>Settings → Connect Google Account to authorise the Drive + Apps Script APIs.</p></div>
+                        </div>
+                        <div class="setup-step"><span class="step-number">2</span>
+                            <div><strong>Scripts auto-load</strong><p>All your Apps Script files from Google Drive appear in the Project dropdown automatically — no Script ID to copy.</p></div>
+                        </div>
+                        <div class="setup-step"><span class="step-number">3</span>
+                            <div><strong>Functions auto-load</strong><p>Select a project and all <code>function foo()</code> definitions are parsed and listed — no need to type function names manually.</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════
+     FAQ / ASK US
+════════════════════════════════════════════════════ -->
+<div class="guide-section" id="sec-faq" style="display:none">
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="content-card">
+                <div class="card-header-custom">
+                    <h6><i class="bi bi-chat-dots-fill me-2" style="color:var(--accent-light)"></i>Ask Us</h6>
+                </div>
+                <div class="card-body-custom">
+                    <p style="font-size:12px;color:var(--text-3);margin-bottom:12px">Type a question or pick from the suggestions below.</p>
+                    <div style="display:flex;gap:8px;margin-bottom:14px">
+                        <input type="text" class="form-control" id="faqInput"
+                               placeholder="e.g. how do I add a telegram bot?"
+                               onkeydown="if(event.key==='Enter') askFaq()">
+                        <button class="btn btn-primary btn-sm" onclick="askFaq()" style="white-space:nowrap">
+                            <i class="bi bi-send-fill me-1"></i>Ask
+                        </button>
+                    </div>
+                    <div id="faqAnswer" style="display:none;margin-bottom:14px"></div>
+
+                    <div style="display:flex;flex-wrap:wrap;gap:6px" id="faqSuggestions">
+                        <button class="faq-pill" onclick="faqQ(this.textContent)">What is AppScript Bridge?</button>
+                        <button class="faq-pill" onclick="faqQ(this.textContent)">How do I create a workflow?</button>
+                        <button class="faq-pill" onclick="faqQ(this.textContent)">How do I connect Telegram?</button>
+                        <button class="faq-pill" onclick="faqQ(this.textContent)">How do I set up ServiceNow?</button>
+                        <button class="faq-pill" onclick="faqQ(this.textContent)">How do I connect Google?</button>
+                        <button class="faq-pill" onclick="faqQ(this.textContent)">How does my function receive data?</button>
+                        <button class="faq-pill" onclick="faqQ(this.textContent)">Why isn't my workflow triggering?</button>
+                        <button class="faq-pill" onclick="faqQ(this.textContent)">How do I use ngrok?</button>
+                        <button class="faq-pill" onclick="faqQ(this.textContent)">What is a webhook?</button>
+                        <button class="faq-pill" onclick="faqQ(this.textContent)">How do I test a workflow?</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="content-card">
+                <div class="card-header-custom"><h6><i class="bi bi-list-task me-2" style="color:var(--accent-light)"></i>Common Issues</h6></div>
+                <div class="card-body-custom">
+                    <div class="guide-steps">
+                        <div class="guide-step">
+                            <div class="guide-step-num" style="background:var(--danger-dim);color:var(--danger);border:1px solid var(--danger-border);width:22px;height:22px;font-size:13px">!</div>
+                            <div class="guide-step-body">
+                                <div class="guide-step-title">Apps Script returns 403</div>
+                                <p>The Apps Script API is not enabled, or the script isn't linked to the correct GCP project. Check both in Google Cloud Console.</p>
+                            </div>
+                        </div>
+                        <div class="guide-step">
+                            <div class="guide-step-num" style="background:var(--danger-dim);color:var(--danger);border:1px solid var(--danger-border);width:22px;height:22px;font-size:13px">!</div>
+                            <div class="guide-step-body">
+                                <div class="guide-step-title">Telegram webhook returns "Bad Request"</div>
+                                <p>BASE_URL must be a valid HTTPS URL. <code>http://localhost:5000</code> is not accepted by Telegram — use ngrok.</p>
+                            </div>
+                        </div>
+                        <div class="guide-step">
+                            <div class="guide-step-num" style="background:var(--danger-dim);color:var(--danger);border:1px solid var(--danger-border);width:22px;height:22px;font-size:13px">!</div>
+                            <div class="guide-step-body">
+                                <div class="guide-step-title">Event log shows "skipped"</div>
+                                <p>Either no active workflow matches this credential + event_type, or the workflow is toggled inactive.</p>
+                            </div>
+                        </div>
+                        <div class="guide-step">
+                            <div class="guide-step-num" style="background:var(--danger-dim);color:var(--danger);border:1px solid var(--danger-border);width:22px;height:22px;font-size:13px">!</div>
+                            <div class="guide-step-body">
+                                <div class="guide-step-title">Function dropdown is empty</div>
+                                <p>Make sure your Google account is connected (Settings). If connected, the function must be a top-level <code>function</code> declaration in a <code>.gs</code> file.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<style>
+.guide-tab {
+    padding: 9px 18px;
+    font-size: 12px; font-weight: 600;
+    border: none; background: none;
+    color: var(--text-3); cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 120ms, border-color 120ms;
+    font-family: inherit;
+}
+.guide-tab:hover { color: var(--text-1); }
+.guide-tab.active { color: var(--accent-light); border-bottom-color: var(--accent); }
+
+.guide-steps { display: flex; flex-direction: column; gap: 18px; }
+.guide-step  { display: flex; gap: 14px; align-items: flex-start; }
+.guide-step-num {
+    width: 28px; height: 28px;
+    background: var(--gradient); color: #fff;
+    border-radius: 50%; font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(99,102,241,.3);
+}
+.guide-step-body { flex: 1; padding-top: 4px; }
+.guide-step-title { font-size: 13px; font-weight: 600; color: var(--text-1); margin-bottom: 5px; }
+.guide-step-body p { font-size: 12px; color: var(--text-2); margin-bottom: 8px; line-height: 1.6; }
+.guide-note {
+    background: var(--info-dim); border: 1px solid var(--info-border);
+    color: var(--info); border-radius: var(--r-sm);
+    padding: 7px 10px; font-size: 11px; margin-top: 8px;
+}
+
+.guide-flow { display: flex; flex-direction: column; gap: 0; }
+.guide-flow-step { display: flex; align-items: center; gap: 12px; padding: 10px 0; }
+.guide-flow-icon {
+    width: 36px; height: 36px; border-radius: var(--r-md);
+    border: 1px solid; display: flex; align-items: center;
+    justify-content: center; font-size: 16px; flex-shrink: 0;
+}
+.guide-flow-arrow { text-align: center; color: var(--text-4); font-size: 18px; padding: 2px 0; }
+
+.faq-pill {
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 5px 12px;
+    font-size: 11px; color: var(--text-2); cursor: pointer;
+    font-family: inherit; transition: var(--t-fast);
+}
+.faq-pill:hover {
+    border-color: var(--border-accent);
+    color: var(--text-1); background: var(--accent-dim);
+}
+
+[data-theme="light"] .guide-tab.active { color: var(--accent); }
+</style>
+<script>
+// ── Tab switching
+function showSection(id, btn) {
+    document.querySelectorAll('.guide-section').forEach(s => s.style.display = 'none');
+    document.querySelectorAll('.guide-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('sec-' + id).style.display = '';
+    btn.classList.add('active');
+}
+
+// ── Search
+function filterGuide(q) {
+    const text = q.toLowerCase().trim();
+    if (!text) {
+        // reset to quickstart
+        document.querySelectorAll('.guide-section').forEach((s,i) => s.style.display = i===0 ? '' : 'none');
+        document.querySelectorAll('.guide-tab').forEach((t,i) => t.classList.toggle('active', i===0));
+        return;
+    }
+    // show all sections that contain the query
+    document.querySelectorAll('.guide-section').forEach(s => {
+        s.style.display = s.textContent.toLowerCase().includes(text) ? '' : 'none';
+    });
+    document.querySelectorAll('.guide-tab').forEach(t => t.classList.remove('active'));
+}
+
+// ── FAQ bot (same KB as base.html help panel)
+const FAQ_KB = [
+    { keys: ['what','appscript','bridge','app','about','overview','is'],
+      topic: 'Overview',
+      answer: 'AppScript Bridge is a webhook automation platform. External apps (ServiceNow, Telegram, etc.) POST events to a unique URL → AppScript Bridge matches the event to an active Workflow → your Google Apps Script function runs with the event JSON as its first argument. No custom server code needed on your side.' },
+    { keys: ['create','workflow','new','build','make','how'],
+      topic: 'Creating Workflows',
+      answer: '① Go to Workspaces → open a project → New Workflow.\n② In the Trigger section, select a credential and event type.\n③ In the Action section, pick an Apps Script project and function (they auto-load from your Google account).\n④ Click "Create Workflow", then toggle it Active in the editor.' },
+    { keys: ['telegram','bot','token','botfather','message'],
+      topic: 'Telegram Setup',
+      answer: '① Message @BotFather on Telegram → /newbot → copy the token.\n② Credentials → New Telegram → paste token, save.\n③ On the manage page click "Register Webhook with Telegram" (requires a public HTTPS URL — use ngrok for local dev).\n④ Create a workflow with your Telegram credential.' },
+    { keys: ['servicenow','snow','incident','business','rule'],
+      topic: 'ServiceNow Setup',
+      answer: '① In ServiceNow: System OAuth → Application Registry → create OAuth endpoint → copy Client ID + Secret.\n② Credentials → New ServiceNow → fill in instance URL + OAuth details → save → copy webhook URL.\n③ In ServiceNow: create a Business Rule or Flow Designer HTTP step that POSTs to your webhook URL.\n④ Create a workflow in AppScript Bridge with the matching event type.' },
+    { keys: ['google','connect','auth','account','gcp'],
+      topic: 'Google Connection',
+      answer: 'Go to Settings → Connect Google Account. Approve all scopes. Once connected, Apps Script projects and functions auto-load in the workflow builder. Requirement: Apps Script API must be enabled in your GCP project, and the script must be linked to the same GCP project.' },
+    { keys: ['webhook','url','endpoint','receive','http','post'],
+      topic: 'Webhooks',
+      answer: 'A webhook URL is unique to each credential. Your external app POSTs JSON to it; AppScript Bridge receives it, finds matching active workflows, and calls the configured Apps Script function.\n\n• ServiceNow: /webhook/servicenow/<cred_id>\n• Telegram:   /webhook/telegram/<cred_id>\n• Generic:    /webhook/trigger (needs X-API-Key header)' },
+    { keys: ['function','receive','data','parameter','payload','argument','pass'],
+      topic: 'Apps Script Functions',
+      answer: 'Your function receives the full event payload as the first argument:\n\nfunction myHandler(payload) {\n  Logger.log(payload.event_type);\n  Logger.log(payload.number); // INC0001234\n}\n\nThe function must be a top-level declaration in a .gs file, and the script must be linked to the correct GCP project.' },
+    { keys: ['test','testing','try','send','sample','debug'],
+      topic: 'Testing',
+      answer: 'In the workflow editor, the Test Payload panel is always visible on the right. It pre-fills with realistic sample data for your trigger type. Click "Send" — results appear immediately. Green = success, red = error. All test runs appear in Event Logs.' },
+    { keys: ['not','triggering','inactive','active','activate','working'],
+      topic: 'Troubleshooting',
+      answer: 'Common reasons:\n① Workflow is inactive — toggle ON in the editor header.\n② Credential is deactivated — check Credentials page.\n③ event_type mismatch — check Event Logs for the actual value received.\n④ Google not connected — Apps Script calls fail without a valid token.\n⑤ Webhook not registered (Telegram) — register it from the credential manage page.' },
+    { keys: ['ngrok','local','localhost','public','base','url'],
+      topic: 'Local Development',
+      answer: '① Install ngrok: https://ngrok.com\n② Run: ngrok http 5000\n③ Copy the https://xxxx.ngrok.io URL\n④ Update your .env: BASE_URL=https://xxxx.ngrok.io\n⑤ Restart Flask\n⑥ For Telegram: re-register the webhook from the credential manage page.' },
+];
+
+function faqQ(q) {
+    document.getElementById('faqInput').value = q;
+    askFaq();
+}
+
+function askFaq() {
+    const raw = document.getElementById('faqInput').value.trim();
+    if (!raw) return;
+    const words = raw.toLowerCase()
+        .replace(/[?.,!]/g,'').split(/\s+/)
+        .filter(w => w.length > 2 && !['the','and','for','are','how','why','can','does','do','my','is','a','an','to','of','in','it','on','be','me','i'].includes(w));
+
+    let best = null, bestScore = 0;
+    for (const entry of FAQ_KB) {
+        const score = words.reduce((n, w) => n + (entry.keys.some(k => k.includes(w) || w.includes(k)) ? 1 : 0), 0);
+        if (score > bestScore) { bestScore = score; best = entry; }
+    }
+
+    const el = document.getElementById('faqAnswer');
+    el.style.display = '';
+
+    if (best && bestScore > 0) {
+        el.innerHTML = `
+            <div style="background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.2);
+                        border-radius:var(--r-lg);padding:14px 16px;animation:fadeUp .15s ease">
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;
+                             color:var(--accent-light);margin-bottom:8px">
+                    <i class="bi bi-bookmark-fill me-1"></i>${escapeHtml(best.topic)}
+                </div>
+                <div style="font-size:12px;color:var(--text-1);white-space:pre-line;line-height:1.65">${escapeHtml(best.answer)}</div>
+                <div style="font-size:10px;color:var(--text-3);margin-top:8px;display:flex;align-items:center;gap:4px">
+                    <i class="bi bi-robot"></i> AppScript Bridge Help
+                </div>
+            </div>`;
+    } else {
+        el.innerHTML = `
+            <div style="background:var(--bg-elevated);border:1px solid var(--border);
+                        border-radius:var(--r-md);padding:12px 14px;font-size:12px;color:var(--text-2)">
+                I'm not sure about that. Try the Quick Start or platform-specific tabs above.
+            </div>`;
+    }
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+</script>
+{% endblock %}

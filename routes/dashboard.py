@@ -130,3 +130,8 @@ def events():
 @dashboard_bp.route("/settings")
 def settings():
     return render_template("settings.html", **_ctx(page="settings"))
+
+
+@dashboard_bp.route("/guide")
+def guide():
+    return render_template("guide.html", **_ctx(page="guide"))
