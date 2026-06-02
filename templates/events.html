@@ -1,12 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Event Logs{% endblock %}
-
+{% block title %}Event Logs — AppScript Bridge{% endblock %}
 {% block breadcrumb %}
-<nav aria-label="breadcrumb">
-    <ol class="breadcrumb mb-0">
-        <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
-        <li class="breadcrumb-item active">Event Logs</li>
-    </ol>
+<nav class="breadcrumb">
+    <li class="breadcrumb-item"><a href="/">Dashboard</a></li>
+    <li class="breadcrumb-item active">Event Logs</li>
 </nav>
 {% endblock %}
 
@@ -14,14 +11,13 @@
 <div class="page-header">
     <div>
         <h4 class="page-title">Event Logs</h4>
-        <p class="page-subtitle">Monitor all incoming webhook events and their execution results</p>
+        <p class="page-subtitle">Incoming webhook events and execution results</p>
     </div>
-    <button class="btn btn-outline-secondary" onclick="loadEvents()">
-        <i class="bi bi-arrow-clockwise"></i> Refresh
+    <button class="btn btn-secondary btn-sm" onclick="loadEvents()">
+        <i class="bi bi-arrow-clockwise me-1"></i>Refresh
     </button>
 </div>
 
-<!-- Filters -->
 <div class="filter-bar mb-4">
     <div class="filter-tabs">
         <button class="filter-tab active" onclick="filterEvents('all', this)">All</button>
@@ -29,6 +25,7 @@
         <button class="filter-tab" onclick="filterEvents('failed', this)">Failed</button>
         <button class="filter-tab" onclick="filterEvents('skipped', this)">Skipped</button>
     </div>
+    <span id="eventCount" style="font-size:11px;color:var(--text-3);font-family:'JetBrains Mono',monospace"></span>
 </div>
 
 <div class="content-card">
@@ -40,16 +37,16 @@
                     <th>Source</th>
                     <th>Event Type</th>
                     <th>Workflow</th>
-                    <th>Duration</th>
-                    <th>Timestamp</th>
+                    <th style="text-align:right">Duration</th>
+                    <th>Time</th>
                     <th></th>
                 </tr>
             </thead>
             <tbody id="eventsTable">
                 <tr>
-                    <td colspan="7" class="text-center text-muted py-4">
-                        <i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:0.5rem"></i>
-                        No events recorded yet
+                    <td colspan="7" class="text-center py-5">
+                        <i class="bi bi-inbox-fill" style="font-size:1.8rem;display:block;margin-bottom:.5rem;color:var(--text-4)"></i>
+                        <span style="font-size:13px;color:var(--text-3)">No events recorded yet</span>
                     </td>
                 </tr>
             </tbody>
@@ -61,36 +58,36 @@
 <div class="modal fade" id="eventDetailModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
-            <div class="modal-header border-0">
+            <div class="modal-header">
                 <h5 class="modal-title">Event Details</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <div class="row g-3 mb-3">
                     <div class="col-md-4">
-                        <label class="form-label text-muted small">Status</label>
+                        <label class="form-label">Status</label>
                         <div id="detailStatus"></div>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label text-muted small">Source</label>
-                        <div id="detailSource"></div>
+                        <label class="form-label">Source</label>
+                        <div id="detailSource" style="font-size:13px;color:var(--text-1)"></div>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label text-muted small">Duration</label>
-                        <div id="detailDuration"></div>
+                        <label class="form-label">Duration</label>
+                        <div id="detailDuration" style="font-size:13px;color:var(--text-1);font-family:'JetBrains Mono',monospace"></div>
                     </div>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label text-muted small">Payload</label>
-                    <pre class="bg-dark text-light p-3 rounded small" id="detailPayload"></pre>
+                    <label class="form-label">Payload</label>
+                    <pre id="detailPayload" style="font-size:11px;max-height:180px;overflow-y:auto"></pre>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label text-muted small">Response</label>
-                    <pre class="bg-dark text-light p-3 rounded small" id="detailResponse"></pre>
+                    <label class="form-label">Response</label>
+                    <pre id="detailResponse" style="font-size:11px;max-height:120px;overflow-y:auto"></pre>
                 </div>
                 <div id="detailError" style="display:none">
-                    <label class="form-label text-muted small">Error</label>
-                    <div class="alert alert-danger small" id="detailErrorMsg"></div>
+                    <label class="form-label">Error</label>
+                    <div class="alert alert-danger" id="detailErrorMsg" style="font-size:12px;font-family:'JetBrains Mono',monospace"></div>
                 </div>
             </div>
         </div>
@@ -101,73 +98,61 @@
 {% block scripts %}
 <script>
 let allEvents = [];
-let workflowMap = {};
-
-document.addEventListener('DOMContentLoaded', () => {
-    loadEvents();
-});
+document.addEventListener('DOMContentLoaded', loadEvents);
 
 async function loadEvents() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const workflowId = urlParams.get('workflow_id');
+    const params     = new URLSearchParams(window.location.search);
+    const workflowId = params.get('workflow_id');
     const url = workflowId ? `/api/events?workflow_id=${workflowId}&limit=100` : '/api/events?limit=100';
-
     allEvents = await api.get(url);
-
-    // Build workflow map
-    const workflows = await api.get('/api/events?limit=0');
-    // We'll just show IDs for now since we can't easily map
     renderEvents(allEvents);
 }
 
 function filterEvents(status, btn) {
     document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
     btn.classList.add('active');
-    if (status === 'all') renderEvents(allEvents);
-    else renderEvents(allEvents.filter(e => e.status === status));
+    renderEvents(status === 'all' ? allEvents : allEvents.filter(e => e.status === status));
 }
 
 function renderEvents(events) {
+    document.getElementById('eventCount').textContent = `${events.length} event${events.length !== 1 ? 's' : ''}`;
     const tbody = document.getElementById('eventsTable');
-    if (events.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">
-            <i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:0.5rem"></i>No events found</td></tr>`;
+    if (!events.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-5">
+            <i class="bi bi-inbox-fill" style="font-size:1.8rem;display:block;margin-bottom:.5rem;color:var(--text-4)"></i>
+            <span style="font-size:13px;color:var(--text-3)">No events found</span></td></tr>`;
         return;
     }
-
     tbody.innerHTML = events.map((e, i) => `
         <tr>
             <td><span class="status-badge ${e.status}">${e.status}</span></td>
-            <td><span class="badge bg-secondary-subtle text-secondary">${escapeHtml(e.source_app || '-')}</span></td>
-            <td><code>${escapeHtml(e.event_type || '-')}</code></td>
-            <td class="text-truncate" style="max-width:150px">${e.workflow_id ? e.workflow_id.substring(0, 12) + '...' : '-'}</td>
-            <td>${e.processing_time_ms || 0}ms</td>
-            <td>${timeAgo(e.timestamp)}</td>
+            <td><span class="badge bg-secondary-subtle text-secondary" style="font-size:10px">${escapeHtml(e.source_app || '—')}</span></td>
+            <td><code style="font-size:10.5px">${escapeHtml(e.event_type || '—')}</code></td>
+            <td style="font-size:11px;color:var(--text-3);font-family:'JetBrains Mono',monospace">
+                ${e.workflow_id ? e.workflow_id.substring(0,14)+'…' : '—'}
+            </td>
+            <td style="text-align:right;font-size:11px;color:var(--text-3);font-family:'JetBrains Mono',monospace">
+                ${e.processing_time_ms || 0}ms
+            </td>
+            <td style="font-size:11px;color:var(--text-3)">${timeAgo(e.timestamp)}</td>
             <td>
-                <button class="btn btn-sm btn-icon" onclick='showEventDetail(${i})'>
+                <button class="btn-icon" onclick="showEventDetail(${i})" title="View details">
                     <i class="bi bi-eye"></i>
                 </button>
             </td>
-        </tr>
-    `).join('');
+        </tr>`).join('');
 }
 
-function showEventDetail(index) {
-    const e = allEvents[index];
-    document.getElementById('detailStatus').innerHTML = `<span class="status-badge ${e.status}">${e.status}</span>`;
-    document.getElementById('detailSource').textContent = e.source_app || '-';
+function showEventDetail(i) {
+    const e = allEvents[i];
+    document.getElementById('detailStatus').innerHTML  = `<span class="status-badge ${e.status}">${e.status}</span>`;
+    document.getElementById('detailSource').textContent   = e.source_app || '—';
     document.getElementById('detailDuration').textContent = `${e.processing_time_ms || 0}ms`;
-    document.getElementById('detailPayload').textContent = JSON.stringify(e.payload || {}, null, 2);
+    document.getElementById('detailPayload').textContent  = JSON.stringify(e.payload || {}, null, 2);
     document.getElementById('detailResponse').textContent = JSON.stringify(e.response || {}, null, 2);
-
-    const errorDiv = document.getElementById('detailError');
-    if (e.error) {
-        errorDiv.style.display = '';
-        document.getElementById('detailErrorMsg').textContent = e.error;
-    } else {
-        errorDiv.style.display = 'none';
-    }
-
+    const errDiv = document.getElementById('detailError');
+    if (e.error) { errDiv.style.display = ''; document.getElementById('detailErrorMsg').textContent = e.error; }
+    else { errDiv.style.display = 'none'; }
     new bootstrap.Modal(document.getElementById('eventDetailModal')).show();
 }
 </script>
