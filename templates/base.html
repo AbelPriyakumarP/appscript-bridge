@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" id="htmlRoot">
 <script>
-    // Apply saved theme before any CSS renders — prevents flash
     (function(){var t=localStorage.getItem('asb-theme')||'dark';document.documentElement.setAttribute('data-theme',t);})();
 </script>
 <head>
@@ -10,7 +9,7 @@
     <title>{% block title %}AppScript Bridge{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
@@ -51,7 +50,6 @@
                     </a>
                 </li>
             </ul>
-
             <div class="nav-divider"></div>
             <p class="nav-section-title">Settings</p>
             <ul class="nav-list">
@@ -86,7 +84,6 @@
 
     <!-- ── Main Content ── -->
     <main class="main-content">
-        <!-- Top Bar -->
         <header class="top-bar">
             <div class="top-bar-left">
                 <button class="sidebar-toggle d-md-none" onclick="toggleSidebar()">
@@ -104,24 +101,20 @@
                     <i class="bi bi-exclamation-circle-fill"></i> Connect Google
                 </a>
                 {% endif %}
-                <!-- Theme toggle -->
-                <button id="themeToggle" onclick="toggleTheme()"
-                        class="btn-icon" title="Toggle theme"
+                <button id="themeToggle" onclick="toggleTheme()" class="btn-icon" title="Toggle theme"
                         style="width:32px;height:32px;font-size:15px">
                     <i class="bi bi-sun"></i>
                 </button>
             </div>
         </header>
-
-        <!-- Content -->
         <div class="content-area">{% block content %}{% endblock %}</div>
     </main>
 </div>
 
-<!-- Toast container -->
+<!-- ── Toast ── -->
 <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer" style="z-index:9999"></div>
 
-<!-- Delete modal -->
+<!-- ── Delete modal ── -->
 <div class="modal fade" id="deleteModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-sm">
         <div class="modal-content">
@@ -143,8 +136,398 @@
     </div>
 </div>
 
+<!-- ════════════════════════════════════════
+     HELP SYSTEM
+════════════════════════════════════════ -->
+
+<!-- Overlay -->
+<div class="help-overlay" id="helpOverlay" onclick="closeHelpPanel()"></div>
+
+<!-- Help FAB -->
+<button class="help-fab" id="helpFab" onclick="toggleHelpPanel()" title="Help & User Guide">
+    <i class="bi bi-question-lg" id="helpFabIcon"></i>
+</button>
+
+<!-- Help Panel -->
+<div class="help-panel" id="helpPanel">
+
+    <!-- Header -->
+    <div class="help-panel-header">
+        <div class="d-flex align-items-center gap-2">
+            <div style="width:28px;height:28px;background:var(--gradient);border-radius:var(--r-sm);
+                        display:flex;align-items:center;justify-content:center;
+                        box-shadow:0 2px 8px rgba(99,102,241,.4)">
+                <i class="bi bi-lightning-charge-fill" style="color:#fff;font-size:13px"></i>
+            </div>
+            <div>
+                <div style="font-size:13px;font-weight:700;color:var(--text-1)">Help Center</div>
+                <div style="font-size:10px;color:var(--text-3)">AppScript Bridge</div>
+            </div>
+        </div>
+        <button class="btn-icon" onclick="closeHelpPanel()" title="Close">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="help-tabs">
+        <button class="help-tab active" id="tabGuideBtn" onclick="switchHelpTab('guide')">
+            <i class="bi bi-book me-1"></i>Guide
+        </button>
+        <button class="help-tab" id="tabAskBtn" onclick="switchHelpTab('ask')">
+            <i class="bi bi-chat-dots me-1"></i>Ask Us
+        </button>
+    </div>
+
+    <!-- ── GUIDE TAB ── -->
+    <div class="help-body" id="tabGuide">
+
+        <!-- Page-specific contextual help (injected by JS) -->
+        <div id="helpContext"></div>
+
+        <!-- Quick Start -->
+        <div>
+            <div class="help-section-title"><i class="bi bi-rocket me-1"></i>Quick Start</div>
+            <div class="help-steps">
+                <div class="help-step">
+                    <span class="help-step-num">1</span>
+                    <div class="help-step-text">
+                        <strong>Connect Google</strong>
+                        Go to Settings → Connect Google Account to authorise the Apps Script REST API.
+                    </div>
+                </div>
+                <div class="help-step">
+                    <span class="help-step-num">2</span>
+                    <div class="help-step-text">
+                        <strong>Add a Credential</strong>
+                        Go to Credentials → Add one for ServiceNow, Telegram, or a custom app.
+                        Each credential gets a unique webhook URL.
+                    </div>
+                </div>
+                <div class="help-step">
+                    <span class="help-step-num">3</span>
+                    <div class="help-step-text">
+                        <strong>Create a Workspace &amp; Project</strong>
+                        Workspaces group related projects. Projects hold your workflows.
+                    </div>
+                </div>
+                <div class="help-step">
+                    <span class="help-step-num">4</span>
+                    <div class="help-step-text">
+                        <strong>Build a Workflow</strong>
+                        Inside a project, click <em>New Workflow</em>. Set a Trigger (which credential + event)
+                        and an Action (which Apps Script function to call).
+                    </div>
+                </div>
+                <div class="help-step">
+                    <span class="help-step-num">5</span>
+                    <div class="help-step-text">
+                        <strong>Activate &amp; Test</strong>
+                        Toggle the workflow ON, then use the Test panel to fire a sample event and confirm it runs.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Concept glossary -->
+        <div>
+            <div class="help-section-title"><i class="bi bi-info-circle me-1"></i>Key Concepts</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+                <div class="help-card">
+                    <div class="help-card-title"><i class="bi bi-broadcast me-1" style="color:var(--warning)"></i>Trigger</div>
+                    <div class="help-card-body">An incoming webhook event from an external system (ServiceNow incident, Telegram message, etc.) that starts a workflow run.</div>
+                </div>
+                <div class="help-card">
+                    <div class="help-card-title"><i class="bi bi-lightning-charge-fill me-1" style="color:var(--accent-light)"></i>Action</div>
+                    <div class="help-card-body">The Google Apps Script function that is called when the trigger fires. The event payload is passed as the first parameter.</div>
+                </div>
+                <div class="help-card">
+                    <div class="help-card-title"><i class="bi bi-key-fill me-1" style="color:var(--warning)"></i>Credential</div>
+                    <div class="help-card-body">Stores authentication details for an external platform and generates a dedicated webhook URL that platform sends events to.</div>
+                </div>
+                <div class="help-card">
+                    <div class="help-card-title"><i class="bi bi-collection-fill me-1" style="color:var(--accent-light)"></i>Workspace</div>
+                    <div class="help-card-body">Top-level container — like a team or environment. One workspace holds many projects; one project holds many workflows.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Links -->
+        <div>
+            <div class="help-section-title"><i class="bi bi-link-45deg me-1"></i>Useful Links</div>
+            <div style="display:flex;flex-direction:column;gap:5px">
+                <a href="/settings" style="font-size:11px;color:var(--accent-light);text-decoration:none;display:flex;align-items:center;gap:5px">
+                    <i class="bi bi-google" style="font-size:12px"></i>Connect Google Account
+                </a>
+                <a href="/credentials/new/servicenow" style="font-size:11px;color:var(--accent-light);text-decoration:none;display:flex;align-items:center;gap:5px">
+                    <i class="bi bi-gear-wide-connected" style="font-size:12px"></i>Add ServiceNow Credential
+                </a>
+                <a href="/credentials/new/telegram" style="font-size:11px;color:var(--accent-light);text-decoration:none;display:flex;align-items:center;gap:5px">
+                    <i class="bi bi-telegram" style="font-size:12px"></i>Add Telegram Credential
+                </a>
+                <a href="https://developers.google.com/apps-script/api/reference/rest" target="_blank"
+                   style="font-size:11px;color:var(--accent-light);text-decoration:none;display:flex;align-items:center;gap:5px">
+                    <i class="bi bi-box-arrow-up-right" style="font-size:12px"></i>Apps Script REST API docs
+                </a>
+            </div>
+        </div>
+    </div><!-- /tabGuide -->
+
+    <!-- ── ASK TAB ── -->
+    <div class="help-body" id="tabAsk" style="display:none">
+
+        <!-- Input -->
+        <div>
+            <div class="help-section-title"><i class="bi bi-chat-dots me-1"></i>Ask anything about AppScript Bridge</div>
+            <div class="help-ask-wrap">
+                <input class="help-ask-input" id="helpInput" type="text"
+                       placeholder="e.g. how do I add telegram?"
+                       onkeydown="if(event.key==='Enter') askHelp()">
+                <button class="help-ask-btn" onclick="askHelp()">Ask</button>
+            </div>
+            <!-- Answer area -->
+            <div id="helpAnswer" style="display:none"></div>
+        </div>
+
+        <!-- Suggested questions -->
+        <div>
+            <div class="help-section-title"><i class="bi bi-lightbulb me-1"></i>Suggested Questions</div>
+            <div class="help-suggestions">
+                <button class="help-suggestion" onclick="askQuestion('What is AppScript Bridge and how does it work?')">What is AppScript Bridge?</button>
+                <button class="help-suggestion" onclick="askQuestion('How do I create a new workflow?')">How do I create a workflow?</button>
+                <button class="help-suggestion" onclick="askQuestion('How do I connect Telegram?')">How do I connect Telegram?</button>
+                <button class="help-suggestion" onclick="askQuestion('How do I set up ServiceNow?')">How do I set up ServiceNow?</button>
+                <button class="help-suggestion" onclick="askQuestion('How do I connect my Google account?')">How do I connect Google?</button>
+                <button class="help-suggestion" onclick="askQuestion('What is a webhook and how does it work?')">What is a webhook?</button>
+                <button class="help-suggestion" onclick="askQuestion('How do I test a workflow?')">How do I test a workflow?</button>
+                <button class="help-suggestion" onclick="askQuestion('Why is my workflow not triggering?')">Why isn't my workflow triggering?</button>
+                <button class="help-suggestion" onclick="askQuestion('How do Apps Script functions receive data?')">How does Apps Script get the data?</button>
+            </div>
+        </div>
+    </div><!-- /tabAsk -->
+
+</div><!-- /help-panel -->
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+<!-- ── Help System JS ── -->
+<script>
+// ── Page context passed from Flask
+const CURRENT_PAGE = '{{ page | default("") }}';
+
+// ── Contextual help per page
+const PAGE_HELP = {
+  dashboard: {
+    icon: 'bi-grid-1x2-fill', color: 'var(--accent-light)', title: 'Dashboard',
+    tips: [
+      'Stat cards show live counts — click any to navigate there.',
+      'Recent Events table shows the last 10 webhook events across all workflows.',
+      'Use Quick Actions on the right to jump-start common tasks.',
+      'The Summary panel shows active vs inactive workflow counts at a glance.',
+    ]
+  },
+  workspaces: {
+    icon: 'bi-collection-fill', color: 'var(--accent-light)', title: 'Workspaces & Projects',
+    tips: [
+      'Workspaces are top-level containers — think "team" or "environment".',
+      'Each workspace holds Projects, and each Project holds Workflows.',
+      'Click a workspace card to drill into its projects.',
+      'Click a project card to see and manage its workflows.',
+    ]
+  },
+  credentials: {
+    icon: 'bi-key-fill', color: 'var(--warning)', title: 'Credentials',
+    tips: [
+      'Each credential generates a unique webhook URL — that\'s what you paste into ServiceNow or register with Telegram.',
+      'The API Key in the credential manage page is used as the <code>X-API-Key</code> header for generic webhooks.',
+      'For Telegram: after creating the credential, click "Register Webhook" so Telegram knows where to send updates.',
+      'For ServiceNow: copy the webhook URL and paste it into a Business Rule or Flow Designer HTTP step.',
+    ]
+  },
+  events: {
+    icon: 'bi-activity', color: 'var(--warning)', title: 'Event Logs',
+    tips: [
+      'Every webhook received is logged here — including ones with no matching workflow (status: skipped).',
+      'Click the 👁 eye icon on any row to see the full payload, response, and any error.',
+      'Use the filter tabs (Success / Failed / Skipped) to narrow down issues.',
+      'Duration shows how long your Apps Script function took to run.',
+    ]
+  },
+  settings: {
+    icon: 'bi-gear-fill', color: 'var(--text-3)', title: 'Settings',
+    tips: [
+      'Connect your Google account here to enable auto-loading of Apps Script projects and functions.',
+      'If you\'re running locally, use <code>ngrok http 5000</code> to get a public URL, then update <code>BASE_URL</code> in your <code>.env</code>.',
+      'The GCP Setup Guide walks you through creating OAuth credentials in Google Cloud Console.',
+    ]
+  },
+};
+
+// ── Knowledge base for the Ask bot
+const KB = [
+  {
+    keys: ['what','appscript','bridge','app','overview','about','is','does'],
+    answer: 'AppScript Bridge is a webhook-to-Apps Script automation platform. External apps (ServiceNow, Telegram, etc.) send HTTP events to your unique webhook URL → AppScript Bridge matches the event to an active workflow → your Google Apps Script function runs with the event payload as its argument. No server code needed on your side.',
+    topic: 'Overview'
+  },
+  {
+    keys: ['create','new','workflow','make','build','how'],
+    answer: '① Go to Workspaces → open a project → click "New Workflow".\n② In the Trigger section, select a credential and choose an event type.\n③ In the Action section, pick an Apps Script project and the function to call.\n④ Click "Create Workflow" — then activate it with the toggle on the edit page.',
+    topic: 'Workflows'
+  },
+  {
+    keys: ['telegram','bot','botfather','token','message'],
+    answer: '① Go to Credentials → Add Telegram → paste the Bot Token from @BotFather.\n② After saving, open the credential manage page and click "Register Webhook with Telegram".\n③ Your bot will now forward every message/command to AppScript Bridge.\n④ Create a workflow with your Telegram credential as the trigger and choose the event type (message, command, callback_query…).',
+    topic: 'Telegram Setup'
+  },
+  {
+    keys: ['servicenow','snow','incident','business','rule','outbound','rest'],
+    answer: '① Go to Credentials → Add ServiceNow → fill in Instance URL, Client ID, and Client Secret (from System OAuth › Application Registry).\n② After saving, copy the webhook URL shown on the manage page.\n③ In ServiceNow, create a Business Rule (Script field) or Flow Designer HTTP step that POSTs the event JSON to that URL.\n④ Create a workflow with your ServiceNow credential and choose the event type (incident.created, etc.).',
+    topic: 'ServiceNow Setup'
+  },
+  {
+    keys: ['google','connect','oauth','account','gcp','scopes','auth'],
+    answer: '① Go to Settings → Connect Google Account.\n② You\'ll be redirected to Google consent — approve all requested scopes (Drive, Apps Script, etc.).\n③ Once connected, the Apps Script project and function dropdowns will auto-populate in the workflow builder.\n④ If you see "Error loading", make sure the Apps Script API is enabled in your GCP project.',
+    topic: 'Google Connection'
+  },
+  {
+    keys: ['webhook','url','endpoint','http','post','receive'],
+    answer: 'A webhook URL is a unique HTTPS endpoint assigned to each credential. Your external app POSTs a JSON payload to this URL whenever an event happens. AppScript Bridge receives it, matches it to an active workflow, and executes the configured Apps Script function.\n\n• ServiceNow URL: /webhook/servicenow/<cred_id>\n• Telegram URL:   /webhook/telegram/<cred_id>\n• Generic URL:    /webhook/trigger (needs X-API-Key header)',
+    topic: 'Webhooks'
+  },
+  {
+    keys: ['test','testing','try','sample','payload','send','debug'],
+    answer: 'On any workflow edit page, the "Test Payload" panel is always visible on the right. It pre-populates with a realistic sample payload for your trigger type. Click "Send" to fire it through the webhook pipeline. Results appear immediately below — green means your Apps Script ran, red means an error occurred. Event Logs records every test run.',
+    topic: 'Testing'
+  },
+  {
+    keys: ['function','script','apps','run','execute','call','parameter'],
+    answer: 'AppScript Bridge calls your function using the Apps Script REST API (projects.run). The full event JSON payload is passed as the first positional parameter. In your .gs file, receive it like:\n\nfunction myHandler(payload) {\n  Logger.log(payload.event_type);\n  Logger.log(payload.number); // e.g. INC0001234\n}\n\nMake sure the script is deployed with "Anyone" execute access (not "Only myself").',
+    topic: 'Apps Script Functions'
+  },
+  {
+    keys: ['not','working','trigger','inactive','active','activate','toggle'],
+    answer: 'Common reasons a workflow doesn\'t trigger:\n① Workflow is not active — toggle the switch ON in the editor.\n② Credential is deactivated — check Credentials page.\n③ Event type mismatch — the incoming payload\'s event_type doesn\'t match the workflow\'s setting.\n④ No matching workflow found — check Event Logs for "skipped" entries.\n⑤ Google not connected — Apps Script calls will fail without a valid token.',
+    topic: 'Troubleshooting'
+  },
+  {
+    keys: ['workspace','project','folder','organise','organize','structure','hierarchy'],
+    answer: 'The hierarchy is: Workspace → Project → Workflow.\n\n• Workspace: top-level group (e.g. "Production", "Staging").\n• Project: a logical collection of related workflows (e.g. "ServiceNow Integrations").\n• Workflow: a single trigger-action pair.\n\nCredentials are scoped to a workspace and shared across all its projects.',
+    topic: 'Workspace Structure'
+  },
+  {
+    keys: ['credential','api','key','secret','token','auth','authentication'],
+    answer: 'A credential stores authentication details for one external platform. It also generates:\n• A dedicated webhook URL (unique per credential)\n• An API Key + Secret (for the generic /webhook/trigger endpoint)\n\nCredentials are workspace-scoped — all projects in a workspace can share them. Manage them at Credentials → click a credential → manage page.',
+    topic: 'Credentials'
+  },
+  {
+    keys: ['ngrok','local','localhost','public','url','base','env'],
+    answer: 'For local development, Telegram and ServiceNow need a public HTTPS URL to reach your machine.\n\n① Install ngrok: https://ngrok.com\n② Run: ngrok http 5000\n③ Copy the https://xxxx.ngrok.io URL\n④ Set BASE_URL=https://xxxx.ngrok.io in your .env file\n⑤ Restart the Flask server\n⑥ Re-register your Telegram webhook from the credential manage page.',
+    topic: 'Local Development'
+  },
+];
+
+// ── Panel state
+let helpOpen = false;
+let currentTab = 'guide';
+
+function toggleHelpPanel() {
+  helpOpen ? closeHelpPanel() : openHelpPanel();
+}
+
+function openHelpPanel() {
+  helpOpen = true;
+  document.getElementById('helpPanel').classList.add('open');
+  document.getElementById('helpOverlay').classList.add('open');
+  document.getElementById('helpFab').classList.add('open');
+  document.getElementById('helpFabIcon').className = 'bi bi-x-lg';
+  renderContextualHelp();
+}
+
+function closeHelpPanel() {
+  helpOpen = false;
+  document.getElementById('helpPanel').classList.remove('open');
+  document.getElementById('helpOverlay').classList.remove('open');
+  document.getElementById('helpFab').classList.remove('open');
+  document.getElementById('helpFabIcon').className = 'bi bi-question-lg';
+}
+
+function switchHelpTab(tab) {
+  currentTab = tab;
+  document.getElementById('tabGuide').style.display = tab === 'guide' ? 'flex' : 'none';
+  document.getElementById('tabAsk').style.display   = tab === 'ask'   ? 'flex' : 'none';
+  document.getElementById('tabGuideBtn').classList.toggle('active', tab === 'guide');
+  document.getElementById('tabAskBtn').classList.toggle('active', tab === 'ask');
+  if (tab === 'ask') document.getElementById('helpInput').focus();
+}
+
+function renderContextualHelp() {
+  const ctx = PAGE_HELP[CURRENT_PAGE];
+  const el  = document.getElementById('helpContext');
+  if (!ctx) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <div>
+      <div class="help-section-title">
+        <i class="bi ${ctx.icon} me-1" style="color:${ctx.color}"></i>You are on: ${ctx.title}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${ctx.tips.map(t => `
+          <div style="display:flex;gap:8px;align-items:flex-start">
+            <i class="bi bi-arrow-right-short" style="color:var(--accent-light);flex-shrink:0;margin-top:1px"></i>
+            <span style="font-size:11px;color:var(--text-2);line-height:1.5">${t}</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+// ── Ask bot
+function askQuestion(q) {
+  document.getElementById('helpInput').value = q;
+  switchHelpTab('ask');
+  askHelp();
+}
+
+function askHelp() {
+  const raw   = document.getElementById('helpInput').value.trim();
+  if (!raw) return;
+
+  const words = raw.toLowerCase()
+    .replace(/[?.,!]/g, '')
+    .split(/\s+/)
+    .filter(w => w.length > 2 && !['the','and','for','are','how','why','can','does','do','my','is','a','an','to','of','in','it','on','be','me','i'].includes(w));
+
+  let best = null, bestScore = 0;
+  for (const entry of KB) {
+    const score = words.reduce((n, w) => n + (entry.keys.some(k => k.includes(w) || w.includes(k)) ? 1 : 0), 0);
+    if (score > bestScore) { bestScore = score; best = entry; }
+  }
+
+  const answerEl = document.getElementById('helpAnswer');
+  answerEl.style.display = '';
+
+  if (best && bestScore > 0) {
+    answerEl.innerHTML = `
+      <div class="help-answer">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;
+                    color:var(--accent-light);margin-bottom:6px">
+          <i class="bi bi-bookmark-fill me-1"></i>${best.topic}
+        </div>
+        <div style="white-space:pre-line">${escapeHtml(best.answer)}</div>
+        <div class="help-answer-source">
+          <i class="bi bi-robot"></i> AppScript Bridge Help Bot
+        </div>
+      </div>`;
+  } else {
+    answerEl.innerHTML = `
+      <div class="help-answer" style="border-color:var(--border);background:var(--bg-surface)">
+        <div style="color:var(--text-2)">I'm not sure about that. Try rephrasing, or browse the <strong>Guide</strong> tab for common topics.</div>
+        <div class="help-answer-source"><i class="bi bi-robot"></i> AppScript Bridge Help Bot</div>
+      </div>`;
+  }
+}
+</script>
+
 {% block scripts %}{% endblock %}
 </body>
 </html>
