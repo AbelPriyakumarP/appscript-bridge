@@ -106,6 +106,77 @@
                         <label class="form-label">Event Type</label>
                         <select class="form-select" id="editEventType"></select>
                     </div>
+
+                    <!-- Webhook URL inline -->
+                    <div class="col-12">
+                        <label class="form-label">Webhook URL</label>
+                        <div class="d-flex gap-2 align-items-center">
+                            <code id="webhookUrl" style="flex:1;display:block;font-size:11px;padding:7px 10px;
+                                background:var(--bg-base);border:1px solid var(--border);border-radius:var(--r-md);
+                                color:var(--orange-light);word-break:break-all;cursor:text;user-select:all">{{ base_url }}/webhook/{% if workflow.trigger.source_app == 'telegram' %}telegram/{{ workflow.trigger.credential_id }}{% elif workflow.trigger.source_app == 'servicenow' %}servicenow/{{ workflow.trigger.credential_id }}{% else %}trigger{% endif %}</code>
+                            <button class="btn-icon flex-shrink-0" onclick="copyText('webhookUrl')" title="Copy URL">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                        <div style="font-size:10px;color:var(--text-3);margin-top:4px">
+                            {% if workflow.trigger.source_app == 'telegram' %}Telegram sends updates here automatically
+                            {% elif workflow.trigger.source_app == 'servicenow' %}Configure in ServiceNow Business Rules or Flow Designer
+                            {% else %}Send <code style="font-size:9px">X-API-Key</code> + <code style="font-size:9px">X-Event-Type</code> headers
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Connector + Filter Node -->
+        <div class="flow-connector">
+            <div class="connector-line"></div>
+        </div>
+
+        <!-- Filter Node -->
+        <div class="node-pane" id="filterNode" style="border-color:var(--warning);opacity:0.9">
+            <div class="node-header" onclick="toggleFilterBody()" style="cursor:pointer;user-select:none">
+                <div class="node-icon" style="background:rgba(234,179,8,.15)">
+                    <i class="bi bi-funnel-fill" style="color:var(--warning)"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="node-title">Filter
+                        <span style="font-size:10px;font-weight:400;color:var(--text-3)"> — optional</span>
+                    </div>
+                    <div class="node-subtitle" id="filterSummary">Disabled — all events pass through</div>
+                </div>
+                <!-- enable toggle (stops click propagation so header click doesn't double-fire) -->
+                <div class="form-check form-switch ms-2" onclick="event.stopPropagation()">
+                    <input class="form-check-input" type="checkbox" id="filterEnabled" onchange="onFilterToggle()" style="cursor:pointer">
+                </div>
+                <i class="bi bi-chevron-down ms-2" id="filterChevron" style="font-size:12px;color:var(--text-3);transition:transform .2s"></i>
+            </div>
+
+            <div class="node-body" id="filterBody" style="display:none">
+                <!-- Logic selector -->
+                <div class="d-flex align-items-center gap-2 mb-3" style="font-size:12px;color:var(--text-2)">
+                    <span>Run action if</span>
+                    <select class="form-select form-select-sm" id="filterLogic" style="width:76px;font-size:12px">
+                        <option value="AND">ALL</option>
+                        <option value="OR">ANY</option>
+                    </select>
+                    <span>of the conditions match</span>
+                </div>
+
+                <!-- Condition rows -->
+                <div id="filterConditions"></div>
+
+                <button class="btn btn-secondary btn-sm mt-2" onclick="addCondition()" style="font-size:11px">
+                    <i class="bi bi-plus-lg me-1"></i>Add condition
+                </button>
+
+                <!-- Field reference hint -->
+                <div class="mt-3 p-2 rounded" style="background:var(--bg-3);font-size:10.5px;color:var(--text-3)">
+                    <i class="bi bi-lightbulb me-1" style="color:var(--warning)"></i>
+                    Field paths reference incoming payload data.
+                    Use <code style="font-size:10px">payload.field</code> or just <code style="font-size:10px">field</code>
+                    — e.g. <code style="font-size:10px">payload.priority</code>
                 </div>
             </div>
         </div>
@@ -137,6 +208,7 @@
                 </div>
             </div>
             <div class="node-body">
+                <!-- API fields -->
                 <div id="editApiFields" style="{{ 'display:none' if workflow.action.type == 'web_app' }}">
                     <div class="row g-3">
                         <div class="col-md-6">
@@ -153,11 +225,43 @@
                         </div>
                     </div>
                 </div>
+                <!-- Web App fields -->
                 <div id="editWebFields" style="{{ '' if workflow.action.type == 'web_app' else 'display:none' }}">
                     <label class="form-label">Web App URL</label>
                     <input type="text" class="form-control" id="editWebUrl"
                            value="{{ workflow.action.web_app_url or '' }}"
                            placeholder="https://script.google.com/macros/s/…/exec">
+                </div>
+
+                <!-- ── Parameter Mapping ─────────────────────────────────── -->
+                <div class="mt-4" id="paramSection">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <div style="font-size:12px;font-weight:600;color:var(--text-2)">
+                            <i class="bi bi-sliders me-1" style="color:var(--accent-light)"></i>
+                            Parameters
+                        </div>
+                        <button class="btn btn-secondary btn-sm" onclick="addParam()" style="font-size:11px;padding:2px 9px">
+                            <i class="bi bi-plus-lg me-1"></i>Add
+                        </button>
+                    </div>
+
+                    <div id="paramRows"></div>
+
+                    <!-- Drop zone — drag a field chip here to create a new param row -->
+                    <div class="param-drop-zone" id="paramDropZone"
+                         ondragover="onDropZoneDragOver(event)"
+                         ondragleave="onDropZoneDragLeave(event)"
+                         ondrop="onDropZoneDrop(event)">
+                        <i class="bi bi-arrow-down-circle me-1"></i>
+                        Drop a field here to add a new parameter
+                    </div>
+
+                    <div class="mt-2 p-2 rounded" style="background:var(--bg-3);font-size:10.5px;color:var(--text-3)">
+                        <i class="bi bi-info-circle me-1" style="color:var(--accent-light)"></i>
+                        Pin a test payload above then <strong>drag fields</strong> into parameter values,
+                        or type <code style="font-size:10px">{{ '{{' }}payload.field{{ '}}' }}</code> manually.
+                        If no parameters are added, the full payload is passed as one argument.
+                    </div>
                 </div>
             </div>
         </div>
@@ -167,62 +271,101 @@
     <!-- Right: Context panel -->
     <div class="context-panel">
 
-        <!-- Webhook URL -->
-        <div class="content-card">
-            <div class="card-header-custom">
-                <h6><i class="bi bi-link-45deg me-1" style="color:var(--accent-light)"></i>Webhook Endpoint</h6>
-                <button class="btn-icon" onclick="copyText('webhookUrl')" title="Copy"><i class="bi bi-clipboard"></i></button>
-            </div>
-            <div class="card-body-custom" style="padding:10px 14px">
-                <code id="webhookUrl" style="font-size:10.5px;display:block;word-break:break-all;background:none;border:none;padding:0;color:var(--accent-light)">{{ base_url }}/webhook/{% if workflow.trigger.source_app == 'telegram' %}telegram/{{ workflow.trigger.credential_id }}{% elif workflow.trigger.source_app == 'servicenow' %}servicenow/{{ workflow.trigger.credential_id }}{% else %}trigger{% endif %}</code>
-                <div style="margin-top:5px;font-size:10px;color:var(--text-3)">
-                    {% if workflow.trigger.source_app == 'telegram' %}Telegram sends updates here automatically
-                    {% elif workflow.trigger.source_app == 'servicenow' %}Configure this in ServiceNow Business Rules or Flow Designer
-                    {% else %}Include <code style="font-size:10px">X-API-Key</code> and <code style="font-size:10px">X-Event-Type</code> headers
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
         <!-- Test Panel -->
         <div class="test-panel">
             <div class="test-panel-header">
-                <h6><i class="bi bi-terminal me-1" style="color:var(--success)"></i>Test Payload</h6>
-                <button class="btn btn-primary btn-sm" onclick="runTest()" id="testBtn" style="font-size:11px;padding:4px 12px">
+                <h6><i class="bi bi-terminal me-1" style="color:var(--success)"></i>Trigger Output Payload</h6>
+                <button class="btn btn-primary btn-sm" onclick="runTest()" id="testBtn"
+                        style="font-size:11px;padding:4px 12px">
                     <i class="bi bi-play-fill me-1"></i>Send
                 </button>
             </div>
             <div class="test-panel-body">
-                <textarea class="form-control test-payload" id="testPayload" rows="5">{{ test_payload }}</textarea>
+                <textarea class="form-control test-payload" id="testPayload" rows="9">{{ test_payload }}</textarea>
                 <div id="testResult" style="display:none">
                     <div class="test-result" id="testResultBody"></div>
                 </div>
             </div>
         </div>
 
-        <!-- Stats -->
-        <div class="content-card">
-            <div class="card-header-custom"><h6><i class="bi bi-bar-chart-fill me-1" style="color:var(--info)"></i>Stats</h6></div>
-            <div class="card-body-custom" style="padding:8px 16px">
-                <div class="stat-row"><span>Total Triggers</span><strong style="font-variant-numeric:tabular-nums">{{ workflow.trigger_count or 0 }}</strong></div>
-                <div class="stat-row"><span>Last Triggered</span><strong style="font-family:'JetBrains Mono',monospace;font-size:11px">{{ workflow.last_triggered[:16] if workflow.last_triggered else 'Never' }}</strong></div>
-                <div class="stat-row"><span>Created</span><strong style="font-family:'JetBrains Mono',monospace;font-size:11px">{{ workflow.created_at[:10] }}</strong></div>
+        <!-- Pinned Trigger Data Panel -->
+        <div class="pinned-data-panel" id="pinnedDataPanel" style="display:none">
+            <div class="pinned-data-header">
+                <div style="display:flex;align-items:center;gap:6px">
+                    <i class="bi bi-pin-fill" style="color:var(--accent-light);font-size:12px"></i>
+                    <span style="font-size:12px;font-weight:600;color:var(--text-1)">Trigger Data</span>
+                    <span id="pinnedFieldCount" style="font-size:10px;color:var(--text-3)"></span>
+                </div>
+            </div>
+            <div class="pinned-data-fields" id="pinnedFields"></div>
+            <div class="pinned-data-hint">
+                <i class="bi bi-hand-index me-1"></i>
+                Drag a field into a parameter value, or click it to insert at cursor
             </div>
         </div>
 
-        <!-- Recent Events -->
-        <div class="content-card">
-            <div class="card-header-custom">
-                <h6><i class="bi bi-clock-history me-1" style="color:var(--warning)"></i>Recent Events</h6>
-                <a href="/events?workflow_id={{ workflow.id }}" class="btn btn-secondary btn-sm" style="font-size:11px;padding:3px 9px">All</a>
+        <!-- Quick Stats strip -->
+        <div style="display:flex;gap:12px;padding:10px 14px;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-lg)">
+            <div style="flex:1;text-align:center">
+                <div style="font-size:18px;font-weight:700;color:var(--orange-light);font-variant-numeric:tabular-nums">{{ workflow.trigger_count or 0 }}</div>
+                <div style="font-size:10px;color:var(--text-3)">Triggers</div>
             </div>
-            <div id="recentEvents" class="card-body-custom" style="padding:8px 16px">
-                <p class="text-center py-2" style="font-size:11px;color:var(--text-3);margin:0">Loading…</p>
+            <div style="width:1px;background:var(--border)"></div>
+            <div style="flex:2;display:flex;flex-direction:column;justify-content:center">
+                <div style="font-size:10px;color:var(--text-3)">Last run</div>
+                <div style="font-size:11px;color:var(--text-2);font-family:'JetBrains Mono',monospace">{{ workflow.last_triggered[:16] if workflow.last_triggered else 'Never' }}</div>
+            </div>
+            <div style="flex:2;display:flex;align-items:center;justify-content:flex-end">
+                <a href="/events?workflow_id={{ workflow.id }}" class="btn btn-secondary btn-sm" style="font-size:11px">
+                    <i class="bi bi-activity me-1"></i>Event Logs
+                </a>
             </div>
         </div>
 
     </div><!-- /context-panel -->
 </div>
+
+<!-- ── Filter condition row template (hidden) ── -->
+<template id="conditionRowTpl">
+    <div class="condition-row d-flex gap-2 mb-2 align-items-center">
+        <input type="text" class="form-control form-control-sm cond-field"
+               placeholder="payload.field" style="flex:2;font-size:12px;font-family:'JetBrains Mono',monospace">
+        <select class="form-select form-select-sm cond-op" style="flex:1.2;font-size:12px">
+            <option value="eq">= equals</option>
+            <option value="ne">≠ not equals</option>
+            <option value="gt">&gt; greater</option>
+            <option value="lt">&lt; less</option>
+            <option value="gte">≥ gte</option>
+            <option value="lte">≤ lte</option>
+            <option value="contains">contains</option>
+            <option value="not_contains">not contains</option>
+            <option value="starts_with">starts with</option>
+            <option value="ends_with">ends with</option>
+            <option value="exists">exists</option>
+            <option value="not_exists">not exists</option>
+        </select>
+        <input type="text" class="form-control form-control-sm cond-val"
+               placeholder="value" style="flex:1.5;font-size:12px">
+        <button class="btn-icon flex-shrink-0" onclick="removeRow(this)" title="Remove">
+            <i class="bi bi-x-lg" style="font-size:13px;color:var(--danger)"></i>
+        </button>
+    </div>
+</template>
+
+<!-- ── Parameter mapping row template (hidden) ── -->
+<template id="paramRowTpl">
+    <div class="param-row d-flex gap-2 mb-2 align-items-center">
+        <input type="text" class="form-control form-control-sm param-name"
+               placeholder="paramName" style="flex:1;font-size:12px;font-family:'JetBrains Mono',monospace">
+        <span style="font-size:13px;color:var(--text-3)">→</span>
+        <input type="text" class="form-control form-control-sm param-value"
+               placeholder="{{ '{{' }}payload.field{{ '}}' }} or static text" style="flex:2;font-size:12px">
+        <button class="btn-icon flex-shrink-0" onclick="removeRow(this)" title="Remove">
+            <i class="bi bi-x-lg" style="font-size:13px;color:var(--danger)"></i>
+        </button>
+    </div>
+</template>
+
 {% endif %}
 {% endblock %}
 
@@ -233,14 +376,21 @@ const WORKSPACE_ID = '{{ workspace.id }}';
 const SCHEMAS      = {{ app_schemas | tojson }};
 let selectedCredType = 'servicenow';
 
+// ── Init ─────────────────────────────────────────────────────────────────────
+
 document.addEventListener('DOMContentLoaded', () => {
     loadScripts();
-    loadRecentEvents();
     populateEventTypes();
+    initFilter();
+    initParams();
+    // Always show Trigger Data panel pre-populated from the sample payload
+    pinCurrentPayload();
 });
 
+// ── Trigger ───────────────────────────────────────────────────────────────────
+
 function populateEventTypes() {
-    const sel    = document.getElementById('editCredential');
+    const sel     = document.getElementById('editCredential');
     const appType = sel.options[sel.selectedIndex]?.dataset?.app || 'custom';
     const schema  = SCHEMAS[appType] || SCHEMAS['custom'];
     document.getElementById('editEventType').innerHTML =
@@ -250,6 +400,8 @@ function populateEventTypes() {
 }
 
 function onCredentialChange() { populateEventTypes(); }
+
+// ── Action / Scripts ──────────────────────────────────────────────────────────
 
 async function loadScripts() {
     const sel = document.getElementById('editScript');
@@ -288,14 +440,243 @@ async function onScriptChange() {
 
 function toggleEditAction() {
     const isApi = document.getElementById('editActionApi').checked;
-    document.getElementById('editApiFields').style.display  = isApi ? '' : 'none';
-    document.getElementById('editWebFields').style.display  = isApi ? 'none' : '';
+    document.getElementById('editApiFields').style.display = isApi ? '' : 'none';
+    document.getElementById('editWebFields').style.display = isApi ? 'none' : '';
 }
 
-async function toggleStatus() {
-    await api.post(`/api/workflows/${WF.id}/toggle`);
-    location.reload();
+// ── Filter node ───────────────────────────────────────────────────────────────
+
+function initFilter() {
+    const cfg = WF.filter || {};
+    document.getElementById('filterEnabled').checked = !!cfg.enabled;
+    document.getElementById('filterLogic').value = cfg.logic || 'AND';
+    (cfg.conditions || []).forEach(c => addCondition(c));
+    updateFilterSummary();
+    if (cfg.enabled) {
+        document.getElementById('filterBody').style.display = '';
+        document.getElementById('filterChevron').style.transform = 'rotate(180deg)';
+    }
 }
+
+function toggleFilterBody() {
+    const body    = document.getElementById('filterBody');
+    const chevron = document.getElementById('filterChevron');
+    const open    = body.style.display !== 'none';
+    body.style.display    = open ? 'none' : '';
+    chevron.style.transform = open ? '' : 'rotate(180deg)';
+}
+
+function onFilterToggle() {
+    updateFilterSummary();
+    // Auto-open body when enabling
+    if (document.getElementById('filterEnabled').checked) {
+        document.getElementById('filterBody').style.display = '';
+        document.getElementById('filterChevron').style.transform = 'rotate(180deg)';
+    }
+}
+
+function addCondition(data = {}) {
+    const tpl  = document.getElementById('conditionRowTpl');
+    const node = tpl.content.cloneNode(true);
+    if (data.field)    node.querySelector('.cond-field').value = data.field;
+    if (data.operator) node.querySelector('.cond-op').value   = data.operator;
+    if (data.value !== undefined) node.querySelector('.cond-val').value = data.value;
+
+    // Hide value input for exists/not_exists operators
+    const opSel = node.querySelector('.cond-op');
+    const valIn = node.querySelector('.cond-val');
+    opSel.addEventListener('change', () => {
+        valIn.style.display = ['exists','not_exists'].includes(opSel.value) ? 'none' : '';
+    });
+    if (['exists','not_exists'].includes(data.operator)) valIn.style.display = 'none';
+
+    opSel.addEventListener('change', updateFilterSummary);
+    node.querySelector('.cond-field').addEventListener('input', updateFilterSummary);
+    node.querySelector('.cond-val').addEventListener('input', updateFilterSummary);
+
+    document.getElementById('filterConditions').appendChild(node);
+    updateFilterSummary();
+}
+
+function updateFilterSummary() {
+    const enabled = document.getElementById('filterEnabled').checked;
+    const logic   = document.getElementById('filterLogic').value;
+    const rows    = document.querySelectorAll('#filterConditions .condition-row');
+    let   text    = 'Disabled — all events pass through';
+    if (enabled) {
+        if (!rows.length) {
+            text = 'Enabled — no conditions set (all pass)';
+        } else {
+            const parts = [...rows].map(r => {
+                const f = r.querySelector('.cond-field').value || '…';
+                const o = r.querySelector('.cond-op').value;
+                const v = r.querySelector('.cond-val').value;
+                return ['exists','not_exists'].includes(o) ? `${f} ${o}` : `${f} ${o} ${v || '…'}`;
+            });
+            text = parts.join(` ${logic} `);
+        }
+    }
+    document.getElementById('filterSummary').textContent = text;
+}
+
+function getFilterConfig() {
+    const enabled = document.getElementById('filterEnabled').checked;
+    const logic   = document.getElementById('filterLogic').value;
+    const rows    = document.querySelectorAll('#filterConditions .condition-row');
+    const conditions = [...rows].map(r => ({
+        field:    r.querySelector('.cond-field').value.trim(),
+        operator: r.querySelector('.cond-op').value,
+        value:    r.querySelector('.cond-val').value,
+    })).filter(c => c.field);
+    return { enabled, logic, conditions };
+}
+
+// ── Parameter mapping ─────────────────────────────────────────────────────────
+
+let lastFocusedParamInput = null;
+
+// Track which param-value input the user last clicked/focused
+document.addEventListener('focusin', e => {
+    if (e.target.classList.contains('param-value')) lastFocusedParamInput = e.target;
+});
+
+function initParams() {
+    (WF.action.parameters || []).forEach(p => addParam(p));
+}
+
+function addParam(data = {}) {
+    const tpl  = document.getElementById('paramRowTpl');
+    const node = tpl.content.cloneNode(true);
+    if (data.name)  node.querySelector('.param-name').value  = data.name;
+    if (data.value !== undefined) node.querySelector('.param-value').value = data.value;
+
+    // Make value input a drop target
+    const valueInput = node.querySelector('.param-value');
+    valueInput.addEventListener('dragover', e => {
+        e.preventDefault(); e.dataTransfer.dropEffect = 'copy';
+        valueInput.classList.add('drop-over');
+    });
+    valueInput.addEventListener('dragleave', () => valueInput.classList.remove('drop-over'));
+    valueInput.addEventListener('drop', e => {
+        e.preventDefault();
+        valueInput.classList.remove('drop-over');
+        insertAtCursor(valueInput, e.dataTransfer.getData('text/plain'));
+    });
+
+    document.getElementById('paramRows').appendChild(node);
+}
+
+function getParams() {
+    return [...document.querySelectorAll('#paramRows .param-row')].map(r => ({
+        name:  r.querySelector('.param-name').value.trim(),
+        value: r.querySelector('.param-value').value,
+    })).filter(p => p.name);
+}
+
+// ── Drop zone (creates a new param row) ──────────────────────────────────────
+
+function onDropZoneDragOver(e) {
+    e.preventDefault(); e.dataTransfer.dropEffect = 'copy';
+    document.getElementById('paramDropZone').classList.add('drag-over');
+}
+function onDropZoneDragLeave() {
+    document.getElementById('paramDropZone').classList.remove('drag-over');
+}
+function onDropZoneDrop(e) {
+    e.preventDefault();
+    document.getElementById('paramDropZone').classList.remove('drag-over');
+    const expr = e.dataTransfer.getData('text/plain');
+    // Derive a param name from the path e.g. payload.foo.bar → bar
+    const match = expr.match(/\{\{payload\.(?:.*\.)?([^}]+)\}\}/);
+    const name  = match ? match[1] : 'param';
+    addParam({ name, value: expr });
+}
+
+// ── Pinned Trigger Data ───────────────────────────────────────────────────────
+
+let pinnedPayload = null;
+
+function pinCurrentPayload() {
+    try {
+        const raw = document.getElementById('testPayload').value;
+        pinPayload(JSON.parse(raw));
+    } catch {}
+}
+
+function pinPayload(payloadObj) {
+    pinnedPayload = payloadObj;
+    renderPinnedFields();
+    document.getElementById('pinnedDataPanel').style.display = '';
+}
+
+function clearPinnedData() {
+    pinnedPayload = null;
+    document.getElementById('pinnedDataPanel').style.display = 'none';
+}
+
+function renderPinnedFields() {
+    const fields = flattenObject(pinnedPayload, 'payload');
+    document.getElementById('pinnedFieldCount').textContent = `· ${fields.length} fields`;
+    document.getElementById('pinnedFields').innerHTML = fields.map(f => `
+        <div class="data-pill" draggable="true"
+             data-path="${escapeHtml(f.path)}"
+             ondragstart="onPillDragStart(event,this)"
+             onclick="onPillClick(this)"
+             title="${escapeHtml(f.path)} = ${escapeHtml(String(f.value))}">
+            <span class="data-pill-path">${escapeHtml(f.path)}</span>
+            <span class="data-pill-sep">·</span>
+            <span class="data-pill-value">${escapeHtml(truncateStr(String(f.value ?? ''), 18))}</span>
+        </div>`).join('');
+}
+
+function flattenObject(obj, prefix) {
+    const out = [];
+    for (const [k, v] of Object.entries(obj || {})) {
+        const path = `${prefix}.${k}`;
+        if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
+            out.push(...flattenObject(v, path));
+        } else {
+            out.push({ path, value: Array.isArray(v) ? JSON.stringify(v) : v });
+        }
+    }
+    return out;
+}
+
+function truncateStr(s, n) { return s.length > n ? s.slice(0, n) + '…' : s; }
+
+function onPillDragStart(e, el) {
+    const expr = '{' + '{' + el.dataset.path + '}' + '}';
+    e.dataTransfer.setData('text/plain', expr);
+    e.dataTransfer.effectAllowed = 'copy';
+}
+
+function onPillClick(pill) {
+    const expr = '{' + '{' + pill.dataset.path + '}' + '}';
+    if (lastFocusedParamInput && document.getElementById('paramRows').contains(lastFocusedParamInput)) {
+        insertAtCursor(lastFocusedParamInput, expr);
+    } else {
+        const match = pill.dataset.path.match(/\.([^.]+)$/);
+        addParam({ name: match ? match[1] : 'param', value: expr });
+        showToast('Added parameter from ' + pill.dataset.path);
+    }
+}
+
+function insertAtCursor(input, text) {
+    const s = input.selectionStart ?? input.value.length;
+    const e = input.selectionEnd   ?? input.value.length;
+    input.value = input.value.slice(0, s) + text + input.value.slice(e);
+    input.selectionStart = input.selectionEnd = s + text.length;
+    input.focus();
+}
+
+// ── Shared row removal ────────────────────────────────────────────────────────
+
+function removeRow(btn) {
+    btn.closest('.condition-row, .param-row').remove();
+    updateFilterSummary();
+}
+
+// ── Save ──────────────────────────────────────────────────────────────────────
 
 async function saveAll() {
     const credSel   = document.getElementById('editCredential');
@@ -308,12 +689,14 @@ async function saveAll() {
             credential_id: credSel.value,
             event_type:    document.getElementById('editEventType').value,
         },
+        filter: getFilterConfig(),
         action: {
             type:          document.querySelector('input[name="editActionType"]:checked').value,
             script_id:     document.getElementById('editScript').value,
             script_name:   scriptSel.options[scriptSel.selectedIndex]?.textContent || '',
             function_name: document.getElementById('editFunction').value,
             web_app_url:   document.getElementById('editWebUrl')?.value || '',
+            parameters:    getParams(),
         },
     };
     try {
@@ -330,6 +713,13 @@ async function saveAll() {
     }
 }
 
+// ── Status / Delete ───────────────────────────────────────────────────────────
+
+async function toggleStatus() {
+    await api.post(`/api/workflows/${WF.id}/toggle`);
+    location.reload();
+}
+
 async function deleteWorkflow() {
     confirmDelete(`Delete workflow "${WF.name}"?`, async () => {
         await api.delete(`/api/workflows/${WF.id}`);
@@ -344,7 +734,8 @@ function copyText(id) {
     showToast('Copied');
 }
 
-// ── Test ──
+// ── Test ──────────────────────────────────────────────────────────────────────
+
 async function runTest() {
     const btn = document.getElementById('testBtn');
     try {
@@ -372,15 +763,21 @@ async function runTest() {
         const result = await resp.json();
         document.getElementById('testResult').style.display = '';
         const el = document.getElementById('testResultBody');
-        el.style.color = result.processed > 0 ? '#7ee787' : '#f87171';
+        const ok      = result.processed > 0;
+        const skipped = result.skipped > 0 && result.processed === 0;
+        el.style.color = ok ? '#7ee787' : skipped ? '#facc15' : '#f87171';
         el.textContent = JSON.stringify(result, null, 2);
-        loadRecentEvents();
+        // Auto-pin the sent payload so fields are immediately draggable
+        try { pinPayload(JSON.parse(document.getElementById('testPayload').value)); } catch {}
+
     } catch (e) { showToast('Error: ' + e.message, 'error'); }
     finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-play-fill me-1"></i>Send';
     }
 }
+
+// ── Recent Events ─────────────────────────────────────────────────────────────
 
 async function loadRecentEvents() {
     const events = await api.get(`/api/events?workflow_id=${WF.id}&limit=5`);
@@ -397,7 +794,8 @@ async function loadRecentEvents() {
         </div>`).join('');
 }
 
-// ── Inline Credential ──
+// ── Inline Credential ─────────────────────────────────────────────────────────
+
 function toggleNewCredential() {
     const p = document.getElementById('inlineCredPanel');
     p.style.display = p.style.display === 'none' ? '' : 'none';

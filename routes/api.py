@@ -193,8 +193,31 @@ def get_script_metadata(script_id):
 @api_bp.route("/events", methods=["GET"])
 def list_events():
     workflow_id = request.args.get("workflow_id")
-    limit = int(request.args.get("limit", 50))
-    return jsonify(_storage().get_event_logs(workflow_id=workflow_id, limit=limit))
+    limit       = int(request.args.get("limit", 50))
+    events      = _storage().get_event_logs(workflow_id=workflow_id, limit=limit)
+
+    # Enrich each event with the workflow name so the UI can show it directly.
+    wf_cache = {}
+    for evt in events:
+        wid = evt.get("workflow_id")
+        if wid and wid not in wf_cache:
+            wf = _storage().get_workflow(wid)
+            wf_cache[wid] = {"name": wf["name"], "id": wid} if wf else None
+        evt["workflow_info"] = wf_cache.get(wid) if wid else None
+
+    return jsonify(events)
+
+
+# ── Webhook connectivity test ──
+
+@api_bp.route("/test-webhook", methods=["POST"])
+def test_webhook_connectivity():
+    """Quick echo endpoint used from the Help panel / settings to verify connectivity."""
+    return jsonify({
+        "success": True,
+        "echo":    request.json,
+        "message": "AppScript Bridge webhook endpoint is reachable",
+    })
 
 
 # ── Dashboard Stats ──

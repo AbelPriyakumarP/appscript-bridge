@@ -1,64 +1,71 @@
 /* ================================================================
-   AppScript Bridge — Premium Dark Design System
-   Inspired by Linear, Vercel, Railway, Resend
+   AppScript Bridge — Astreya Design System
+   Brand: Deep purple-black + orange | Developer-first dark UI
    ================================================================ */
 
 :root {
-  /* ── Backgrounds ── */
-  --bg-base:      #09090b;   /* page canvas */
-  --bg-surface:   #0f0f12;   /* cards */
-  --bg-elevated:  #18181b;   /* inputs, elevated cards */
-  --bg-hover:     #1f1f23;   /* hover states */
-  --bg-active:    #27272a;   /* pressed */
+  /* ── Backgrounds (near-black with deep purple undertone) ── */
+  --bg-base:      #080611;
+  --bg-surface:   #0f0c1d;
+  --bg-elevated:  #181528;
+  --bg-hover:     #211d35;
+  --bg-active:    #2a2640;
+  --bg-3:         #2a2640;
 
   /* ── Borders ── */
   --border:        rgba(255,255,255,0.07);
-  --border-hover:  rgba(255,255,255,0.13);
-  --border-strong: rgba(255,255,255,0.22);
-  --border-accent: rgba(99,102,241,0.38);
+  --border-hover:  rgba(255,255,255,0.14);
+  --border-strong: rgba(255,255,255,0.24);
+  --border-accent: rgba(167,93,255,0.35);
 
   /* ── Text ── */
-  --text-1: #f4f4f5;    /* primary */
-  --text-2: #a1a1aa;    /* secondary */
-  --text-3: #71717a;    /* muted */
-  --text-4: #3f3f46;    /* very muted / placeholder */
+  --text-1: #f0eeff;
+  --text-2: #b8b0d8;
+  --text-3: #7a7098;
+  --text-4: #42384f;
 
-  /* ── Accent — Indigo/Violet ── */
-  --accent:         #6366f1;
-  --accent-light:   #818cf8;
-  --accent-dim:     rgba(99,102,241,0.10);
-  --accent-glow:    rgba(99,102,241,0.30);
-  --gradient:       linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  --gradient-hover: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  /* ── Accent — Astreya Purple ── */
+  --accent:         #7c3aed;
+  --accent-light:   #a78bfa;
+  --accent-dim:     rgba(124,58,237,0.13);
+  --accent-glow:    rgba(124,58,237,0.32);
+  --gradient:       linear-gradient(135deg, #7c3aed 0%, #9333ea 100%);
+  --gradient-hover: linear-gradient(135deg, #6d28d9 0%, #7e22ce 100%);
+
+  /* ── Orange (Astreya secondary) ── */
+  --orange:         #f97316;
+  --orange-light:   #fb923c;
+  --orange-dim:     rgba(249,115,22,0.12);
+  --orange-border:  rgba(249,115,22,0.30);
 
   /* ── Semantic ── */
-  --success:       #22c55e;
-  --success-dim:   rgba(34,197,94,0.10);
-  --success-border:rgba(34,197,94,0.25);
+  --success:        #34d399;
+  --success-dim:    rgba(52,211,153,0.10);
+  --success-border: rgba(52,211,153,0.25);
 
-  --warning:       #f59e0b;
-  --warning-dim:   rgba(245,158,11,0.10);
-  --warning-border:rgba(245,158,11,0.25);
+  --warning:        #f97316;
+  --warning-dim:    rgba(249,115,22,0.10);
+  --warning-border: rgba(249,115,22,0.25);
 
-  --danger:        #f87171;
-  --danger-dim:    rgba(248,113,113,0.10);
-  --danger-border: rgba(248,113,113,0.25);
+  --danger:         #f87171;
+  --danger-dim:     rgba(248,113,113,0.10);
+  --danger-border:  rgba(248,113,113,0.25);
 
-  --info:          #38bdf8;
-  --info-dim:      rgba(56,189,248,0.10);
-  --info-border:   rgba(56,189,248,0.25);
+  --info:           #818cf8;
+  --info-dim:       rgba(129,140,248,0.10);
+  --info-border:    rgba(129,140,248,0.25);
 
   /* ── Flow nodes ── */
-  --trigger-color:  #f59e0b;
-  --trigger-dim:    rgba(245,158,11,0.08);
-  --trigger-border: rgba(245,158,11,0.30);
-  --action-color:   #818cf8;
-  --action-dim:     rgba(129,140,248,0.08);
-  --action-border:  rgba(129,140,248,0.30);
+  --trigger-color:  #f97316;
+  --trigger-dim:    rgba(249,115,22,0.10);
+  --trigger-border: rgba(249,115,22,0.35);
+  --action-color:   #a78bfa;
+  --action-dim:     rgba(167,139,250,0.10);
+  --action-border:  rgba(167,139,250,0.35);
 
   /* ── Sidebar ── */
   --sidebar-w:  244px;
-  --sidebar-bg: #07070a;
+  --sidebar-bg: #060410;
 
   /* ── Radius ── */
   --r-xs: 3px;
@@ -69,10 +76,10 @@
   --r-2xl: 22px;
 
   /* ── Shadows ── */
-  --shadow-sm: 0 1px 3px rgba(0,0,0,.5);
-  --shadow-md: 0 4px 16px rgba(0,0,0,.55);
-  --shadow-lg: 0 8px 32px rgba(0,0,0,.65);
-  --shadow-xl: 0 16px 48px rgba(0,0,0,.75);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.6);
+  --shadow-md: 0 4px 16px rgba(0,0,0,.6);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,.7);
+  --shadow-xl: 0 16px 48px rgba(0,0,0,.8);
 
   /* ── Motion ── */
   --t-fast: 100ms ease;
@@ -81,56 +88,65 @@
 }
 
 /* ================================================================
-   LIGHT THEME OVERRIDES  (data-theme="light" on <html>)
+   LIGHT THEME — Astreya brand: dark purple sidebar + white content
 ================================================================ */
 
 [data-theme="light"] {
-  --bg-base:      #f0f2f5;
+  --bg-base:      #f4f2f9;
   --bg-surface:   #ffffff;
-  --bg-elevated:  #f8f9fb;
-  --bg-hover:     #f1f3f6;
-  --bg-active:    #e9edf2;
+  --bg-elevated:  #ffffff;
+  --bg-hover:     #f0edf8;
+  --bg-active:    #e8e2f5;
+  --bg-3:         #ede9f6;
 
-  --border:        rgba(0,0,0,0.07);
-  --border-hover:  rgba(0,0,0,0.13);
-  --border-strong: rgba(0,0,0,0.22);
-  --border-accent: rgba(99,102,241,0.35);
+  --border:        rgba(109,40,217,0.10);
+  --border-hover:  rgba(109,40,217,0.20);
+  --border-strong: rgba(109,40,217,0.32);
+  --border-accent: rgba(109,40,217,0.35);
 
-  --text-1: #0f172a;
-  --text-2: #475569;
-  --text-3: #94a3b8;
-  --text-4: #cbd5e1;
+  --text-1: #0f0a1e;
+  --text-2: #3d2a60;
+  --text-3: #8060a8;
+  --text-4: #c4aee0;
 
-  --sidebar-bg: #ffffff;
+  --sidebar-bg: #3b1670;
 
-  --shadow-sm: 0 1px 3px rgba(0,0,0,.07);
-  --shadow-md: 0 4px 16px rgba(0,0,0,.09);
-  --shadow-lg: 0 8px 32px rgba(0,0,0,.12);
-  --shadow-xl: 0 16px 48px rgba(0,0,0,.15);
+  --shadow-sm: 0 1px 4px rgba(60,20,120,.08);
+  --shadow-md: 0 4px 16px rgba(60,20,120,.10);
+  --shadow-lg: 0 8px 32px rgba(60,20,120,.13);
+  --shadow-xl: 0 16px 48px rgba(60,20,120,.16);
 }
 
-/* sidebar in light mode */
+/* sidebar in light mode — dark purple bg with white text */
 [data-theme="light"] .sidebar {
-  background: var(--sidebar-bg);
-  border-right: 1px solid var(--border);
+  background: #3b1670;
+  border-right: none;
 }
-[data-theme="light"] .sidebar::before { opacity: .6; }
-[data-theme="light"] .brand-text { color: var(--text-1); }
-[data-theme="light"] .brand-version { color: var(--text-3); }
-[data-theme="light"] .nav-link { color: var(--text-2); }
-[data-theme="light"] .nav-link:hover { color: var(--text-1); background: rgba(0,0,0,.04); }
-[data-theme="light"] .nav-link.active { color: var(--text-1); background: rgba(99,102,241,.08); }
-[data-theme="light"] .nav-link.active i { color: var(--accent); }
-[data-theme="light"] .nav-section-title { color: var(--text-3); }
-[data-theme="light"] .nav-divider { background: var(--border); }
-[data-theme="light"] .user-card { background: rgba(0,0,0,.04); border-color: var(--border); }
-[data-theme="light"] .user-name { color: var(--text-1); }
-[data-theme="light"] .user-email { color: var(--text-3); }
-[data-theme="light"] .btn-connect-google { color: var(--text-2); background: rgba(0,0,0,.03); }
-[data-theme="light"] .btn-connect-google:hover { color: var(--text-1); background: rgba(0,0,0,.06); }
+[data-theme="light"] .sidebar::before { opacity: .4; }
+[data-theme="light"] .brand-text  { color: #ffffff; }
+[data-theme="light"] .brand-version { color: rgba(255,255,255,.45); }
+[data-theme="light"] .nav-link    { color: rgba(255,255,255,.65); }
+[data-theme="light"] .nav-link:hover { color: #fff; background: rgba(255,255,255,.08); }
+[data-theme="light"] .nav-link.active {
+  color: #f97316;
+  background: rgba(249,115,22,.12);
+  border-left: 3px solid #f97316;
+}
+[data-theme="light"] .nav-link.active i { color: #f97316; }
+[data-theme="light"] .nav-section-title { color: rgba(255,255,255,.35); }
+[data-theme="light"] .nav-divider { background: rgba(255,255,255,.12); }
+[data-theme="light"] .user-card  { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.12); }
+[data-theme="light"] .user-name  { color: #ffffff; }
+[data-theme="light"] .user-email { color: rgba(255,255,255,.5); }
+[data-theme="light"] .btn-connect-google { color: rgba(255,255,255,.7); background: rgba(255,255,255,.08); }
+[data-theme="light"] .btn-connect-google:hover { color: #fff; background: rgba(255,255,255,.14); }
 
 /* top bar */
-[data-theme="light"] .top-bar { background: rgba(255,255,255,.9); border-bottom-color: var(--border); }
+[data-theme="light"] .top-bar {
+  background: rgba(255,255,255,.95);
+  border-bottom: 1px solid rgba(109,40,217,.10);
+  backdrop-filter: none;
+}
 
 /* forms */
 [data-theme="light"] .form-control,
@@ -487,12 +503,12 @@ body {
 .content-area {
   flex: 1;
   padding: 26px 28px 48px;
-  animation: fadeUp .18s ease both;
+  animation: contentFadeIn .22s ease;
 }
 
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(5px); }
-  to   { opacity: 1; transform: translateY(0); }
+@keyframes contentFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 /* ================================================================
@@ -1374,6 +1390,92 @@ pre code { background: none; border: none; padding: 0; font-size: inherit; color
 .btn-close { filter: invert(1) brightness(.7); }
 
 /* ================================================================
+   PARAMETER MAPPING — DATA PILLS & DROP ZONES
+================================================================ */
+
+/* Pinned trigger data panel */
+.pinned-data-panel {
+  background: var(--bg-surface);
+  border: 1px solid rgba(99,102,241,.35);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.pinned-data-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 14px;
+  border-bottom: 1px solid rgba(99,102,241,.2);
+  background: rgba(99,102,241,.07);
+}
+.pinned-data-fields {
+  padding: 10px 12px;
+  display: flex; flex-wrap: wrap; gap: 6px;
+  max-height: 200px; overflow-y: auto;
+}
+.pinned-data-hint {
+  padding: 6px 12px 10px;
+  font-size: 10px; color: var(--text-4);
+  border-top: 1px solid var(--border);
+}
+
+/* Draggable field chip / data pill */
+.data-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px 3px 7px;
+  border-radius: 20px;
+  background: rgba(99,102,241,.13);
+  border: 1px solid rgba(99,102,241,.3);
+  cursor: grab;
+  user-select: none;
+  transition: background var(--t-fast), border-color var(--t-fast), transform var(--t-fast);
+  max-width: 100%;
+}
+.data-pill:hover {
+  background: rgba(99,102,241,.24);
+  border-color: rgba(99,102,241,.6);
+  transform: translateY(-1px);
+}
+.data-pill:active { cursor: grabbing; transform: scale(.97); }
+.data-pill-path {
+  font-size: 10.5px; font-weight: 600;
+  color: var(--accent-light);
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 150px;
+}
+.data-pill-sep { font-size: 9px; color: var(--text-4); }
+.data-pill-value {
+  font-size: 10px; color: var(--text-3);
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 80px;
+}
+
+/* Param value input: drop-over highlight */
+.param-value.drop-over {
+  border-color: var(--accent-light) !important;
+  background: rgba(99,102,241,.08) !important;
+  box-shadow: 0 0 0 2px rgba(99,102,241,.2) !important;
+  outline: none;
+}
+
+/* "Drop here to add new parameter" zone */
+.param-drop-zone {
+  border: 2px dashed var(--border-hover);
+  border-radius: var(--r-md);
+  padding: 8px 12px;
+  font-size: 11px; color: var(--text-4);
+  text-align: center;
+  transition: border-color var(--t-fast), background var(--t-fast), color var(--t-fast);
+  cursor: default;
+  margin-top: 6px;
+}
+.param-drop-zone.drag-over {
+  border-color: var(--accent-light);
+  background: rgba(99,102,241,.07);
+  color: var(--accent-light);
+}
+
+/* ================================================================
    TOAST
 ================================================================ */
 
@@ -1389,6 +1491,11 @@ pre code { background: none; border: none; padding: 0; font-size: inherit; color
 }
 .toast-custom.success { border-left: 3px solid var(--success); }
 .toast-custom.error   { border-left: 3px solid var(--danger); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: .4; transform: scale(.8); }
+}
 
 @keyframes slideInRight {
   from { transform: translateX(100%); opacity: 0; }

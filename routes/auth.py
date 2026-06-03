@@ -42,26 +42,33 @@ def callback():
     credentials = flow.credentials
     storage = current_app.config["STORAGE"]
 
+    # Save expiry so _get_credentials() can detect stale tokens and auto-refresh.
+    expiry_iso = credentials.expiry.isoformat() if credentials.expiry else None
+
     tokens = {
-        "access_token": credentials.token,
+        "access_token":  credentials.token,
         "refresh_token": credentials.refresh_token,
-        "token_uri": credentials.token_uri,
-        "client_id": credentials.client_id,
+        "token_uri":     credentials.token_uri,
+        "client_id":     credentials.client_id,
         "client_secret": credentials.client_secret,
-        "scopes": list(credentials.scopes) if credentials.scopes else [],
+        "scopes":        list(credentials.scopes) if credentials.scopes else [],
+        "expiry":        expiry_iso,
     }
     storage.save_google_tokens(tokens)
     session["google_connected"] = True
 
     import requests as req
-    userinfo = req.get(
-        "https://www.googleapis.com/oauth2/v2/userinfo",
-        headers={"Authorization": f"Bearer {credentials.token}"},
-        timeout=10,
-    ).json()
-    session["user_email"] = userinfo.get("email", "")
-    session["user_name"] = userinfo.get("name", "")
-    session["user_picture"] = userinfo.get("picture", "")
+    try:
+        userinfo = req.get(
+            "https://www.googleapis.com/oauth2/v2/userinfo",
+            headers={"Authorization": f"Bearer {credentials.token}"},
+            timeout=10,
+        ).json()
+        session["user_email"]   = userinfo.get("email", "")
+        session["user_name"]    = userinfo.get("name", "")
+        session["user_picture"] = userinfo.get("picture", "")
+    except Exception:
+        pass
 
     return redirect(url_for("dashboard.index"))
 
