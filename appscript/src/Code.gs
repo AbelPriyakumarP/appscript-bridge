@@ -145,31 +145,56 @@ function sendEmail(params) {
 
 
 /**
- * Run this function ONCE in the Apps Script editor to authorize all scopes.
- * Open script.google.com → select testAuthorization → click Run → Allow.
- * After that, all email and Chat functions will work from AppScript Bridge.
+ * STEP 1 — Run this FIRST to clear the old cached authorization.
+ * In the Apps Script editor: select forceReAuth → click Run.
+ * This invalidates the old token and forces a fresh permission prompt.
+ */
+function forceReAuth() {
+  ScriptApp.invalidateAuth();
+  Logger.log('Old authorization cleared. Now run testAuthorization() to re-grant all scopes.');
+}
+
+/**
+ * STEP 2 — Run this AFTER forceReAuth().
+ * Select testAuthorization → click Run → click "Review Permissions" → Allow.
+ * This grants all scopes including https://mail.google.com/ for email.
  */
 function testAuthorization() {
   var token = ScriptApp.getOAuthToken();
-  Logger.log('OAuth token obtained: ' + (token ? 'YES' : 'NO'));
+  Logger.log('OAuth token: ' + (token ? 'YES — scopes granted' : 'NO — auth failed'));
 
-  // Test Gmail API
   try {
-    var resp = UrlFetchApp.fetch(
+    var resp    = UrlFetchApp.fetch(
       'https://gmail.googleapis.com/gmail/v1/users/me/profile',
-      {
-        headers:            { Authorization: 'Bearer ' + token },
-        muteHttpExceptions: true
-      }
+      { headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true }
     );
+    var code    = resp.getResponseCode();
     var profile = JSON.parse(resp.getContentText());
-    Logger.log('Gmail account: ' + (profile.emailAddress || 'unknown'));
+    if (code === 200) {
+      Logger.log('Gmail access confirmed: ' + profile.emailAddress);
+    } else {
+      Logger.log('Gmail API returned ' + code + ' — re-run forceReAuth() and try again');
+    }
   } catch (e) {
-    Logger.log('Gmail API test failed: ' + e.message);
+    Logger.log('Gmail test error: ' + e.message);
   }
 
-  Logger.log('Authorization test complete. All scopes granted.');
-  return { success: true, message: 'Authorization successful. AppScript Bridge can now send emails.' };
+  Logger.log('Done. If Gmail access is confirmed above, email will work from AppScript Bridge.');
+  return { success: true };
+}
+
+/**
+ * STEP 3 — Send a test email to verify everything works end-to-end.
+ * Change the "to" address below then Run this function.
+ */
+function testSendEmail() {
+  var result = sendEmail({
+    recipient: 'smahendru@astreya.com',
+    subject:   'Test from AppScript Bridge',
+    body:      'If you received this, email is working correctly!'
+  });
+  Logger.log(JSON.stringify(result));
+  return result;
 }
 
 
