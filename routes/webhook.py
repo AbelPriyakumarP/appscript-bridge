@@ -184,102 +184,121 @@ def telegram_send_message(credential_id):
         return jsonify({"error": str(e)}), 500
 
 
-# ── Zapier webhook ────────────────────────────────────────────────────────────
-# Zapier sends a POST to this URL from an HTTP action step.
-# In Zapier: Action → Webhooks by Zapier (POST) → URL = this endpoint
-# Header: X-API-Key = credential api_key
+# ── Datadog webhook ───────────────────────────────────────────────────────────
+# Setup: Datadog → Integrations → Webhooks → Add Webhook
+# URL: BASE_URL/webhook/datadog/<credential_id>
+# Payload template (custom JSON): {"alert_type":"$ALERT_TYPE","alert_transition":"$ALERT_TRANSITION",
+#   "event_title":"$EVENT_TITLE","metric":"$METRIC","host":"$HOSTNAME","tags":"$TAGS",
+#   "org_name":"$ORG_NAME","url":"$URL","id":"$ID","priority":"$PRIORITY"}
 
-@webhook_bp.route("/zapier/<credential_id>", methods=["POST"])
-def zapier_webhook(credential_id):
+@webhook_bp.route("/datadog/<credential_id>", methods=["POST"])
+def datadog_webhook(credential_id):
     credential, err = _processor().validate_credential(credential_id)
     if err:
         return jsonify({"error": err}), 404
 
-    if credential.get("app_type") != "zapier":
-        return jsonify({"error": "Not a Zapier credential"}), 400
+    if credential.get("app_type") != "datadog":
+        return jsonify({"error": "Not a Datadog credential"}), 400
 
-    # Optional shared secret validation
+    # Validate optional shared secret
     secret = credential.get("config", {}).get("webhook_secret", "")
     if secret:
-        sent = request.headers.get("X-Webhook-Secret", "")
+        sent = (request.headers.get("X-Datadog-Webhook-Secret")
+                or request.headers.get("X-Webhook-Secret", ""))
         if sent != secret:
             return jsonify({"error": "Invalid webhook secret"}), 401
 
-    payload    = dict(request.json or {})
-    event_type = payload.pop("event_type", None) or request.headers.get("X-Event-Type") or "zap.triggered"
-    result     = _processor().process_event(credential, event_type, payload)
+    payload = dict(request.json or {})
 
+    # Derive event_type from Datadog's alert_type + alert_transition fields
+    alert_type       = (payload.get("alert_type") or "").lower().replace(" ", "_")
+    alert_transition = (payload.get("alert_transition") or "").lower()
+
+    if alert_type and alert_transition:
+        event_type = f"{alert_type}_{alert_transition}"
+    elif alert_type:
+        event_type = f"monitor_{alert_type}"
+    else:
+        event_type = (
+            payload.pop("event_type", None)
+            or request.headers.get("X-Event-Type")
+            or "monitor_alert"
+        )
+
+    result      = _processor().process_event(credential, event_type, payload)
     status_code = 200 if result.get("processed", 0) > 0 else 202
     return jsonify(result), status_code
 
 
-@webhook_bp.route("/zapier/<credential_id>/test", methods=["GET", "POST"])
-def zapier_test(credential_id):
-    """
-    Zapier calls this to verify the connection is working.
-    Returns the credential info so Zapier can confirm connectivity.
-    """
+@webhook_bp.route("/datadog/<credential_id>/test", methods=["GET", "POST"])
+def datadog_test(credential_id):
+    """Returns connectivity status — paste this URL into Datadog Webhook test."""
     storage    = current_app.config["STORAGE"]
     credential = storage.get_credential(credential_id)
-    if not credential or credential.get("app_type") != "zapier":
-        return jsonify({"error": "Zapier credential not found"}), 404
-
+    if not credential or credential.get("app_type") != "datadog":
+        return jsonify({"error": "Datadog credential not found"}), 404
     return jsonify({
         "success":       True,
         "credential_id": credential_id,
         "name":          credential.get("name"),
-        "message":       "AppScript Bridge Zapier connection verified",
-        "webhook_url":   f"{current_app.config['BASE_URL']}/webhook/zapier/{credential_id}",
+        "message":       "AppScript Bridge Datadog connection verified",
+        "webhook_url":   f"{current_app.config['BASE_URL']}/webhook/datadog/{credential_id}",
     })
 
 
-# ── n8n webhook ───────────────────────────────────────────────────────────────
-# In n8n: add an HTTP Request node → POST to this URL
-# Header: X-API-Key = credential api_key  (or use the /trigger endpoint)
-# n8n Webhook trigger node can also POST here directly.
+# ── Jira webhook ──────────────────────────────────────────────────────────────
+# Setup: Jira Settings → System → WebHooks → Create WebHook
+# URL: BASE_URL/webhook/jira/<credential_id>
+# Events: select issue created/updated/deleted, sprint, board, etc.
+# Jira Cloud also supports Jira Automation → "Send web request" action.
 
-@webhook_bp.route("/n8n/<credential_id>", methods=["POST"])
-def n8n_webhook(credential_id):
+@webhook_bp.route("/jira/<credential_id>", methods=["POST"])
+def jira_webhook(credential_id):
     credential, err = _processor().validate_credential(credential_id)
     if err:
         return jsonify({"error": err}), 404
 
-    if credential.get("app_type") != "n8n":
-        return jsonify({"error": "Not an n8n credential"}), 400
+    if credential.get("app_type") != "jira":
+        return jsonify({"error": "Not a Jira credential"}), 400
 
-    # Optional shared secret validation
+    # Validate optional shared secret
     secret = credential.get("config", {}).get("webhook_secret", "")
     if secret:
-        sent = request.headers.get("X-Webhook-Secret", "") or request.headers.get("X-N8N-Secret", "")
+        sent = (request.headers.get("X-Hub-Signature")
+                or request.headers.get("X-Jira-Webhook-Secret", ""))
         if sent != secret:
             return jsonify({"error": "Invalid webhook secret"}), 401
 
-    payload    = dict(request.json or {})
-    # n8n often wraps data in {"body": {...}} — unwrap it
-    if "body" in payload and isinstance(payload["body"], dict) and len(payload) == 1:
-        payload = payload["body"]
+    payload = dict(request.json or {})
 
-    event_type = payload.pop("event_type", None) or request.headers.get("X-Event-Type") or "workflow.executed"
-    result     = _processor().process_event(credential, event_type, payload)
+    # Jira sends event type as "webhookEvent" field
+    event_type = (
+        payload.get("webhookEvent")
+        or payload.pop("event_type", None)
+        or request.headers.get("X-Event-Type")
+        or "jira:issue_updated"
+    )
+    # Normalise: "jira:issue_created" → keep as-is (already clean)
+    event_type = event_type.lower().strip()
 
+    result      = _processor().process_event(credential, event_type, payload)
     status_code = 200 if result.get("processed", 0) > 0 else 202
     return jsonify(result), status_code
 
 
-@webhook_bp.route("/n8n/<credential_id>/test", methods=["GET", "POST"])
-def n8n_test(credential_id):
-    """Connectivity test endpoint — n8n can call this to verify the URL is reachable."""
+@webhook_bp.route("/jira/<credential_id>/test", methods=["GET", "POST"])
+def jira_test(credential_id):
+    """Connectivity test — paste this URL into Jira Webhook settings to verify."""
     storage    = current_app.config["STORAGE"]
     credential = storage.get_credential(credential_id)
-    if not credential or credential.get("app_type") != "n8n":
-        return jsonify({"error": "n8n credential not found"}), 404
-
+    if not credential or credential.get("app_type") != "jira":
+        return jsonify({"error": "Jira credential not found"}), 404
     return jsonify({
         "success":       True,
         "credential_id": credential_id,
         "name":          credential.get("name"),
-        "message":       "AppScript Bridge n8n connection verified",
-        "webhook_url":   f"{current_app.config['BASE_URL']}/webhook/n8n/{credential_id}",
+        "message":       "AppScript Bridge Jira connection verified",
+        "webhook_url":   f"{current_app.config['BASE_URL']}/webhook/jira/{credential_id}",
     })
 
 
