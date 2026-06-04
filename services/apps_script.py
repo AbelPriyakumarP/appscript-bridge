@@ -213,21 +213,42 @@ class AppsScriptService:
                         "processing_time_ms": elapsed_ms}
 
             data = resp.json()
+
+            # ── Top-level API error (e.g. 200 body with error key) ──────────
             if "error" in data:
-                err = data["error"]
-                msg = err.get("message", str(err))
+                err     = data["error"]
+                msg     = err.get("message", str(err))
                 details = err.get("details", [])
-                # Surface the actual script error if present
+                trace   = []
                 for d in details:
-                    if d.get("@type", "").endswith("ExecutionError"):
-                        msg = d.get("errorMessage", msg)
+                    dtype = d.get("@type", "")
+                    if dtype.endswith("ExecutionError"):
+                        msg   = d.get("errorMessage", msg)
+                        trace = d.get("scriptStackTraceElements", [])
                         break
-                return {"success": False, "error": msg, "details": details,
-                        "processing_time_ms": elapsed_ms}
+                return {
+                    "success":            False,
+                    "error":              msg,
+                    "details":            details,
+                    "stack_trace":        trace,
+                    "processing_time_ms": elapsed_ms,
+                }
+
+            # ── Script ran but returned an error object ───────────────────────
+            response_obj = data.get("response", {})
+            result_val   = response_obj.get("result", {})
+            if isinstance(result_val, dict) and result_val.get("success") is False:
+                return {
+                    "success":            False,
+                    "error":              result_val.get("error", "Script returned failure"),
+                    "detail":             result_val.get("detail", ""),
+                    "response":           response_obj,
+                    "processing_time_ms": elapsed_ms,
+                }
 
             return {
-                "success": True,
-                "response": data.get("response", {}),
+                "success":            True,
+                "response":           response_obj,
                 "processing_time_ms": elapsed_ms,
             }
 

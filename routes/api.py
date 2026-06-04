@@ -188,6 +188,49 @@ def get_script_metadata(script_id):
     return jsonify(result)
 
 
+@api_bp.route("/scripts/<script_id>/ping", methods=["POST"])
+def ping_script(script_id):
+    """
+    Call ping() on the Apps Script project to verify:
+    - Script is reachable via Execution API
+    - OAuth token has the required Gmail scope
+    Returns the script's version, authorized email, and gmailApi status.
+    """
+    script_svc = current_app.config["APPS_SCRIPT"]
+    result = script_svc.run_script(script_id, "ping", parameters=None)
+    # run_script wraps the Apps Script return value in response.result
+    if result.get("success"):
+        inner = (result.get("response") or {}).get("result") or result.get("response") or {}
+        return jsonify({
+            "success":    True,
+            "ping":       inner,
+            "gmailReady": inner.get("gmailApi", False),
+            "email":      inner.get("email", ""),
+            "message":    inner.get("message", ""),
+        })
+    return jsonify({
+        "success": False,
+        "error":   result.get("error", "Script call failed"),
+        "hint":    _auth_hint(result.get("error", "")),
+    }), 400
+
+
+def _auth_hint(error_msg):
+    """Return a human-readable fix based on the error message."""
+    e = (error_msg or "").lower()
+    if "403" in e or "permission" in e:
+        return ("Script is not linked to a GCP project with the Apps Script API enabled. "
+                "See GCP_SETUP.md Step 6.")
+    if "401" in e or "token" in e or "expired" in e:
+        return "Google token expired. Go to Settings → Disconnect → Reconnect Google Account."
+    if "script_id" in e or "not found" in e:
+        return "Script ID is wrong or the script was deleted."
+    if "mail" in e or "send_mail" in e or "gmail" in e:
+        return ("Email scope not authorized. In the Apps Script editor: "
+                "run forceReAuth() then testAuthorization() and click Allow.")
+    return "Check Event Logs for the full error response from Google."
+
+
 # ── Event Logs ──
 
 @api_bp.route("/events", methods=["GET"])

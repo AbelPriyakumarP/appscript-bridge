@@ -1,12 +1,55 @@
 /**
- * AppScript Bridge — Universal Handler
- * Uses Gmail REST API directly via UrlFetchApp to avoid MailApp/GmailApp
- * authorization issues when called through the Execution API.
+ * AppScript Bridge — Universal Handler  v8
+ *
+ * HOW AUTHORIZATION WORKS (read this once):
+ *   When AppScript Bridge calls this script via the Execution API, Google
+ *   runs it using the SCRIPT OWNER's authorization. That authorization is
+ *   set when the owner runs ANY function in the Apps Script editor and
+ *   clicks "Allow". The scopes granted at that moment apply to ALL future
+ *   Execution API calls — including from AppScript Bridge.
+ *
+ *   Required one-time setup in script.google.com:
+ *     1. Run  forceReAuth()       — clears the old cached token
+ *     2. Run  testAuthorization() — triggers the "Allow" popup with new scopes
+ *     3. Run  testSendEmail()     — confirms email works from the script itself
+ *     4. Back in AppScript Bridge, trigger the workflow — it will now work.
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  UNIVERSAL DISPATCHER
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Connectivity ping — AppScript Bridge calls this to verify the script
+ * is reachable and the OAuth token has the required scopes.
+ * Returns the authorized email and scope list.
+ */
+function ping() {
+  var token = ScriptApp.getOAuthToken();
+  var email = '';
+  var gmailOk = false;
+
+  try {
+    var resp = UrlFetchApp.fetch(
+      'https://gmail.googleapis.com/gmail/v1/users/me/profile',
+      { headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true }
+    );
+    if (resp.getResponseCode() === 200) {
+      email   = JSON.parse(resp.getContentText()).emailAddress || '';
+      gmailOk = true;
+    }
+  } catch (e) { /* ignore */ }
+
+  return {
+    success:  true,
+    version:  8,
+    email:    email,
+    gmailApi: gmailOk,
+    message:  gmailOk
+      ? 'Script is reachable. Gmail API confirmed for ' + email
+      : 'Script is reachable but Gmail API not authorized yet. Run testAuthorization() in the editor.'
+  };
+}
 
 function handleEvent(params) {
   params = params || {};
