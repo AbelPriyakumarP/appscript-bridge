@@ -26,8 +26,11 @@
  *   message       → "New incident: {{payload.number}} - {{payload.short_description}}"
  */
 function handleEvent(params) {
+  // Guard: params can be undefined if no parameter mapping is set in the workflow
+  params = params || {};
+
   try {
-    var action = (params && params.action) ? params.action : 'sendEmail';
+    var action = params.action || 'sendEmail';
 
     switch (action) {
       case 'sendEmail':         return sendEmail(params);
@@ -65,9 +68,14 @@ function handleEvent(params) {
  *   replyTo    — (optional) reply-to address
  */
 function sendEmail(params) {
+  params = params || {};  // guard against undefined
+
   var recipient = params.recipient || params.to || params.email;
   if (!recipient) {
-    return { success: false, error: 'sendEmail: recipient is required (map it from payload)' };
+    return {
+      success: false,
+      error: 'sendEmail: recipient is required. In the workflow editor → Parameters → add "recipient" and map it to {{payload.email}} or type a static address.'
+    };
   }
 
   var subject = params.subject || '[AppScript Bridge] Notification';
@@ -121,6 +129,7 @@ function sendEmail(params) {
  *   Your spaceId = "spaces/XXXXXXXXX"
  */
 function sendGChatMessage(params) {
+  params = params || {};
   var spaceId = _resolveSpaceId(params.spaceId || params.space || params.chatSpace);
   if (!spaceId) {
     return { success: false, error: 'sendGChatMessage: spaceId is required' };
@@ -166,6 +175,7 @@ function sendGChatMessage(params) {
  *   buttonUrl    → "https://your-instance.service-now.com/incident.do?sysparm_query=number={{payload.number}}"
  */
 function sendGChatCard(params) {
+  params = params || {};
   var spaceId = _resolveSpaceId(params.spaceId || params.space || params.chatSpace);
   if (!spaceId) {
     return { success: false, error: 'sendGChatCard: spaceId is required' };
@@ -239,6 +249,7 @@ function sendGChatCard(params) {
  *   message    — text to send
  */
 function sendGChatDM(params) {
+  params = params || {};
   if (!params.userEmail) {
     return { success: false, error: 'sendGChatDM: userEmail is required' };
   }
@@ -282,6 +293,7 @@ function sendGChatDM(params) {
  *                If omitted, all params are written as JSON
  */
 function logToSheet(params) {
+  params = params || {};
   var sheetId = params.sheetId || params.spreadsheetId;
   if (!sheetId) {
     return { success: false, error: 'logToSheet: sheetId is required' };
@@ -326,6 +338,7 @@ function logToSheet(params) {
  *   folderId — (optional) Drive folder ID to place the doc in
  */
 function createDoc(params) {
+  params = params || {};
   var title = params.title || 'AppScript Bridge Document - ' + new Date().toLocaleDateString();
   var body  = params.body  || JSON.stringify(params, null, 2);
 
