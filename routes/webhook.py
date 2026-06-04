@@ -184,6 +184,105 @@ def telegram_send_message(credential_id):
         return jsonify({"error": str(e)}), 500
 
 
+# ── Zapier webhook ────────────────────────────────────────────────────────────
+# Zapier sends a POST to this URL from an HTTP action step.
+# In Zapier: Action → Webhooks by Zapier (POST) → URL = this endpoint
+# Header: X-API-Key = credential api_key
+
+@webhook_bp.route("/zapier/<credential_id>", methods=["POST"])
+def zapier_webhook(credential_id):
+    credential, err = _processor().validate_credential(credential_id)
+    if err:
+        return jsonify({"error": err}), 404
+
+    if credential.get("app_type") != "zapier":
+        return jsonify({"error": "Not a Zapier credential"}), 400
+
+    # Optional shared secret validation
+    secret = credential.get("config", {}).get("webhook_secret", "")
+    if secret:
+        sent = request.headers.get("X-Webhook-Secret", "")
+        if sent != secret:
+            return jsonify({"error": "Invalid webhook secret"}), 401
+
+    payload    = dict(request.json or {})
+    event_type = payload.pop("event_type", None) or request.headers.get("X-Event-Type") or "zap.triggered"
+    result     = _processor().process_event(credential, event_type, payload)
+
+    status_code = 200 if result.get("processed", 0) > 0 else 202
+    return jsonify(result), status_code
+
+
+@webhook_bp.route("/zapier/<credential_id>/test", methods=["GET", "POST"])
+def zapier_test(credential_id):
+    """
+    Zapier calls this to verify the connection is working.
+    Returns the credential info so Zapier can confirm connectivity.
+    """
+    storage    = current_app.config["STORAGE"]
+    credential = storage.get_credential(credential_id)
+    if not credential or credential.get("app_type") != "zapier":
+        return jsonify({"error": "Zapier credential not found"}), 404
+
+    return jsonify({
+        "success":       True,
+        "credential_id": credential_id,
+        "name":          credential.get("name"),
+        "message":       "AppScript Bridge Zapier connection verified",
+        "webhook_url":   f"{current_app.config['BASE_URL']}/webhook/zapier/{credential_id}",
+    })
+
+
+# ── n8n webhook ───────────────────────────────────────────────────────────────
+# In n8n: add an HTTP Request node → POST to this URL
+# Header: X-API-Key = credential api_key  (or use the /trigger endpoint)
+# n8n Webhook trigger node can also POST here directly.
+
+@webhook_bp.route("/n8n/<credential_id>", methods=["POST"])
+def n8n_webhook(credential_id):
+    credential, err = _processor().validate_credential(credential_id)
+    if err:
+        return jsonify({"error": err}), 404
+
+    if credential.get("app_type") != "n8n":
+        return jsonify({"error": "Not an n8n credential"}), 400
+
+    # Optional shared secret validation
+    secret = credential.get("config", {}).get("webhook_secret", "")
+    if secret:
+        sent = request.headers.get("X-Webhook-Secret", "") or request.headers.get("X-N8N-Secret", "")
+        if sent != secret:
+            return jsonify({"error": "Invalid webhook secret"}), 401
+
+    payload    = dict(request.json or {})
+    # n8n often wraps data in {"body": {...}} — unwrap it
+    if "body" in payload and isinstance(payload["body"], dict) and len(payload) == 1:
+        payload = payload["body"]
+
+    event_type = payload.pop("event_type", None) or request.headers.get("X-Event-Type") or "workflow.executed"
+    result     = _processor().process_event(credential, event_type, payload)
+
+    status_code = 200 if result.get("processed", 0) > 0 else 202
+    return jsonify(result), status_code
+
+
+@webhook_bp.route("/n8n/<credential_id>/test", methods=["GET", "POST"])
+def n8n_test(credential_id):
+    """Connectivity test endpoint — n8n can call this to verify the URL is reachable."""
+    storage    = current_app.config["STORAGE"]
+    credential = storage.get_credential(credential_id)
+    if not credential or credential.get("app_type") != "n8n":
+        return jsonify({"error": "n8n credential not found"}), 404
+
+    return jsonify({
+        "success":       True,
+        "credential_id": credential_id,
+        "name":          credential.get("name"),
+        "message":       "AppScript Bridge n8n connection verified",
+        "webhook_url":   f"{current_app.config['BASE_URL']}/webhook/n8n/{credential_id}",
+    })
+
+
 # ── Connectivity test ─────────────────────────────────────────────────────────
 
 @webhook_bp.route("/test", methods=["GET", "POST"])

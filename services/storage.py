@@ -33,6 +33,44 @@ APP_CREDENTIAL_SCHEMAS = {
             "inline_query", "command", "custom",
         ],
     },
+    "zapier": {
+        "label": "Zapier",
+        "icon": "bi-lightning-charge-fill",
+        "color": "#FF4F00",
+        "fields": [
+            {"key": "webhook_secret", "label": "Webhook Secret", "type": "password",
+             "placeholder": "Optional shared secret for request validation", "required": False},
+        ],
+        "webhook_events": [
+            "zap.triggered", "custom",
+        ],
+        "setup_instructions": (
+            "In Zapier: create a Zap → Trigger = Webhooks by Zapier (Catch Hook) "
+            "→ copy the Zapier hook URL. Then add an Action step: Webhooks by Zapier "
+            "(POST) → URL = the AppScript Bridge webhook URL shown below → "
+            "include X-API-Key header with the credential's API key."
+        ),
+    },
+    "n8n": {
+        "label": "n8n",
+        "icon": "bi-diagram-3-fill",
+        "color": "#EA4B71",
+        "fields": [
+            {"key": "n8n_url", "label": "n8n Instance URL", "type": "text",
+             "placeholder": "https://your-n8n.example.com", "required": False},
+            {"key": "webhook_secret", "label": "Webhook Secret", "type": "password",
+             "placeholder": "Optional shared secret header value", "required": False},
+        ],
+        "webhook_events": [
+            "workflow.executed", "node.error", "custom",
+        ],
+        "setup_instructions": (
+            "In n8n: add a Webhook node as trigger → copy its test/production URL. "
+            "Add an HTTP Request node → method POST → URL = AppScript Bridge webhook URL "
+            "→ header X-API-Key = credential API key. "
+            "To send events FROM n8n TO AppScript Bridge, use the HTTP Request node."
+        ),
+    },
     "custom": {
         "label": "Custom / Generic",
         "icon": "bi-plug",
