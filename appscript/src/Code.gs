@@ -52,33 +52,52 @@ function handleEvent(params) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Send an email.
+ * Send an email via GmailApp (uses https://mail.google.com/ scope).
  *
  * params:
  *   recipient  — email address (required)
  *   subject    — email subject
  *   body       — plain-text body
- *   htmlBody   — (optional) HTML body; if set, overrides plain body in HTML clients
+ *   htmlBody   — (optional) HTML body
  *   cc         — (optional) CC address
  *   bcc        — (optional) BCC address
+ *   name       — (optional) sender display name
+ *   replyTo    — (optional) reply-to address
  */
 function sendEmail(params) {
   var recipient = params.recipient || params.to || params.email;
   if (!recipient) {
-    return { success: false, error: 'sendEmail: recipient is required' };
+    return { success: false, error: 'sendEmail: recipient is required (map it from payload)' };
   }
 
   var subject = params.subject || '[AppScript Bridge] Notification';
   var body    = params.body    || JSON.stringify(params, null, 2);
 
   var options = {};
-  if (params.htmlBody) options.htmlBody = params.htmlBody;
-  if (params.cc)       options.cc       = params.cc;
-  if (params.bcc)      options.bcc      = params.bcc;
+  if (params.htmlBody) options.htmlBody    = params.htmlBody;
+  if (params.cc)       options.cc          = params.cc;
+  if (params.bcc)      options.bcc         = params.bcc;
+  if (params.name)     options.name        = params.name;
+  if (params.replyTo)  options.replyTo     = params.replyTo;
 
-  MailApp.sendEmail(recipient, subject, body, options);
+  // Use GmailApp — requires https://mail.google.com/ scope (declared in appsscript.json)
+  // Falls back to MailApp if GmailApp is somehow unavailable
+  try {
+    GmailApp.sendEmail(recipient, subject, body, options);
+    Logger.log('sendEmail (GmailApp) → ' + recipient + ' | ' + subject);
+  } catch (gmailErr) {
+    Logger.log('GmailApp failed, trying MailApp: ' + gmailErr.message);
+    try {
+      MailApp.sendEmail(recipient, subject, body, options);
+      Logger.log('sendEmail (MailApp) → ' + recipient + ' | ' + subject);
+    } catch (mailErr) {
+      return {
+        success: false,
+        error: 'Email failed. Re-authorize the script: open script.google.com → Run any function → Allow permissions. Details: ' + mailErr.message
+      };
+    }
+  }
 
-  Logger.log('sendEmail → ' + recipient + ' | ' + subject);
   return { success: true, action: 'sendEmail', to: recipient, subject: subject };
 }
 
